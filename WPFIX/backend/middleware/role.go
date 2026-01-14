@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 	"wallet-point/utils"
 
@@ -18,6 +19,7 @@ func RoleMiddleware(allowedRoles ...string) gin.HandlerFunc {
 		}
 
 		userRole := role.(string)
+		log.Printf("DEBUG ROLE: '%s' checking against %v", userRole, allowedRoles)
 
 		// Check if user role is in allowed roles
 		for _, allowedRole := range allowedRoles {

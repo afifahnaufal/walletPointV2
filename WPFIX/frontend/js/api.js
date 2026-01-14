@@ -20,7 +20,7 @@ class API {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || 'Login failed');
+                throw new Error(data.message || 'Login gagal');
             }
 
             return data;
@@ -43,7 +43,7 @@ class API {
                 if (response.status === 401) {
                     API.logout();
                 }
-                throw new Error(data.message || 'Failed to fetch profile');
+                throw new Error(data.message || 'Gagal mengambil profil');
             }
 
             return data;
@@ -261,7 +261,7 @@ class API {
                 if (response.status === 401) {
                     API.logout();
                 }
-                throw new Error(data.message || 'Request failed');
+                throw new Error(data.message || 'Permintaan gagal');
             }
 
             return data;

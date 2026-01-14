@@ -1,17 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Wallet Point</title>
+    <!-- Modern System Font Stack (No External Dependencies) -->
+
     <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
     <div class="dashboard-layout">
+        <!-- Mobile Sidebar Overlay -->
+        <div id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="mainSidebar">
             <div class="sidebar-header">
                 <div class="brand-text">WalletPoint</div>
             </div>
@@ -24,13 +29,13 @@
                 <div class="user-pill">
                     <div class="user-avatar" id="userAvatar">?</div>
                     <div class="user-details">
-                        <h4 id="userName">User Name</h4>
-                        <span id="userRole">Role</span>
+                        <h4 id="userName">Nama Pengguna</h4>
+                        <span id="userRole">Peran</span>
                     </div>
                 </div>
                 <button onclick="API.logout()" class="btn btn-block"
                     style="margin-top: 1rem; color: var(--error); background: #fee2e2; padding: 0.6rem;">
-                    Sign Out
+                    Keluar
                 </button>
             </div>
         </aside>
@@ -38,12 +43,20 @@
         <!-- Main Content Area -->
         <main class="main-content">
             <header class="top-bar">
+                <button id="sidebarToggle" onclick="toggleSidebar()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
                 <div class="page-info">
-                    <h1 id="pageTitle">Overview</h1>
+                    <h1 id="pageTitle">Ringkasan</h1>
                 </div>
                 <div class="top-actions">
                     <button class="btn btn-primary" id="globalActionBtn" style="display:none; font-size: 0.875rem;">+
-                        Action</button>
+                        Aksi</button>
                 </div>
             </header>
 

@@ -103,7 +103,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, allowedOrigins string, jwtExpiry in
 	// ========================================
 	dosenGroup := api.Group("/dosen")
 	dosenGroup.Use(middleware.AuthMiddleware())
-	dosenGroup.Use(middleware.RoleMiddleware("dosen"))
+	dosenGroup.Use(middleware.RoleMiddleware("dosen", "admin"))
 	{
 		// Mission & Task Management
 		dosenGroup.POST("/missions", missionHandler.CreateMission)

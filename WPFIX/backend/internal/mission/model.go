@@ -85,11 +85,12 @@ type QuestionRequest struct {
 }
 
 type UpdateMissionRequest struct {
-	Title       string     `json:"title,omitempty"`
-	Description string     `json:"description,omitempty"`
-	Points      int        `json:"points,omitempty" binding:"omitempty,gt=0"`
-	Deadline    *time.Time `json:"deadline,omitempty"`
-	Status      string     `json:"status,omitempty" binding:"omitempty,oneof=active inactive expired"`
+	Title       string            `json:"title,omitempty"`
+	Description string            `json:"description,omitempty"`
+	Points      int               `json:"points,omitempty" binding:"omitempty,gt=0"`
+	Deadline    *time.Time        `json:"deadline,omitempty"`
+	Status      string            `json:"status,omitempty" binding:"omitempty,oneof=active inactive expired"`
+	Questions   []QuestionRequest `json:"questions,omitempty"`
 }
 
 type SubmitMissionRequest struct {

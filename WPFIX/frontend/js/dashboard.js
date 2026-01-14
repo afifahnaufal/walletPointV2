@@ -57,7 +57,8 @@ function showToast(message, type = 'success') {
 }
 
 function closeModal(e) {
-    if (e && e.target.className !== 'modal-overlay' && e.target.type !== 'button') return;
+    // Only close if clicking the actual overlay background, not elements inside it
+    if (e && e.target !== e.currentTarget) return;
     const modal = document.querySelector('.modal-overlay');
     if (modal) modal.remove();
 }
@@ -67,35 +68,34 @@ function renderNavigation(role) {
     let items = [];
 
     // Common Items
-    items.push({ label: 'Overview', href: '#dashboard', active: true });
+    items.push({ label: 'Ringkasan', href: '#dashboard', active: true });
 
     if (role === 'admin') {
         items.push(
-            { label: 'Users', href: '#users' },
-            { label: 'Wallets', href: '#wallets' },
-            { label: 'Transactions', href: '#transactions' },
-            { label: 'P2P Transfers', href: '#admin-transfers' },
+            { label: 'Pengguna', href: '#users' },
+            { label: 'Dompet', href: '#wallets' },
+            { label: 'Transaksi', href: '#transactions' },
+            { label: 'Transfer P2P', href: '#admin-transfers' },
             { label: 'Marketplace', href: '#products' },
-            { label: 'Sales History', href: '#admin-sales' },
-            { label: 'Audit Logs', href: '#audit-logs' }
+            { label: 'Riwayat Penjualan', href: '#admin-sales' },
+            { label: 'Log Audit', href: '#audit-logs' }
         );
     } else if (role === 'dosen') {
         items.push(
-            { label: 'My Quizzes', href: '#quizzes' },
-            { label: 'My Missions', href: '#missions' },
-            { label: 'Submissions', href: '#submissions' }
+            { label: 'Buat Quis', href: '#quizzes' },
+            { label: 'Buat Misi', href: '#missions' },
+            { label: 'Approval', href: '#submissions' }
         );
     } else if (role === 'mahasiswa') {
         items.push(
-            { label: 'Discovery Hub', href: '#missions' },
-            { label: 'Rewards Store', href: '#shop' },
-            { label: 'Peer Transfer', href: '#transfer' },
-            { label: 'Leaderboard', href: '#leaderboard' },
-            { label: 'My Ledger', href: '#history' }
+            { label: 'Misi', href: '#missions' },
+            { label: 'MarketPlace', href: '#shop' },
+            { label: 'Scan QR', href: '#transfer' },
+            { label: 'Wallet', href: '#history' }
         );
     }
 
-    items.push({ label: 'Settings', href: '#profile' });
+    items.push({ label: 'Pengaturan', href: '#profile' });
 
     nav.innerHTML = items.map(item => `
         <a href="${item.href}" class="nav-item ${item.active ? 'active' : ''}" data-target="${item.href.substring(1)}">
@@ -110,11 +110,19 @@ function renderNavigation(role) {
             nav.querySelectorAll('.nav-item').forEach(l => l.classList.remove('active'));
             link.classList.add('active');
             handleNavigation(link.dataset.target, role);
+
+            // Auto close sidebar on mobile
+            if (window.innerWidth <= 768) {
+                toggleSidebar();
+            }
         });
     });
 }
 
 function handleNavigation(target, role) {
+    // Force close any open modals to prevent blurring issues
+    document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+
     const title = document.getElementById('pageTitle');
     title.textContent = target.charAt(0).toUpperCase() + target.slice(1).replace('-', ' ');
 
@@ -146,7 +154,7 @@ function handleNavigation(target, role) {
                 break;
             default:
                 renderDashboard({ role: 'admin' });
-                title.textContent = 'Admin Overview';
+                title.textContent = 'Ringkasan Admin';
                 AdminController.loadDashboardStats();
         }
     } else if (role === 'dosen') {
@@ -165,7 +173,7 @@ function handleNavigation(target, role) {
                 break;
             default:
                 renderDashboard({ role: 'dosen' });
-                title.textContent = 'Dosen Overview';
+                title.textContent = 'Ringkasan Dosen';
         }
     } else if (role === 'mahasiswa') {
         switch (target) {
@@ -178,9 +186,7 @@ function handleNavigation(target, role) {
             case 'transfer':
                 MahasiswaController.renderTransfer();
                 break;
-            case 'leaderboard':
-                MahasiswaController.renderLeaderboard();
-                break;
+
             case 'history':
                 MahasiswaController.renderLedger();
                 break;
@@ -189,7 +195,7 @@ function handleNavigation(target, role) {
                 break;
             default:
                 renderDashboard({ role: 'mahasiswa' });
-                title.textContent = 'Mahasiswa Overview';
+                title.textContent = 'Dashboard Mahasiswa';
         }
     }
 }
@@ -198,34 +204,34 @@ function renderDashboard(user) {
     const content = document.getElementById('mainContent');
     const title = document.getElementById('pageTitle');
 
-    title.textContent = `${user.role.charAt(0).toUpperCase() + user.role.slice(1)} Overview`;
+    title.textContent = `Dashboard ${user.role.charAt(0).toUpperCase() + user.role.slice(1)}`;
 
     if (user.role === 'admin') {
         content.innerHTML = `
             <div class="stats-grid">
                 <div class="stat-card card-gradient-1">
-                    <span class="stat-label">System Users</span>
+                    <span class="stat-label">Pengguna Sistem</span>
                     <div class="stat-value" id="stats-users">--</div>
-                    <div class="stat-trend" style="color: var(--primary)">Total Registered</div>
+                    <div class="stat-trend" style="color: var(--primary)">Total Terdaftar</div>
                 </div>
                 <div class="stat-card card-gradient-2">
-                    <span class="stat-label">Total Transactions</span>
+                    <span class="stat-label">Total Transaksi</span>
                     <div class="stat-value" id="stats-txns">--</div>
-                    <div class="stat-trend" style="color: var(--secondary)">All Time Events</div>
+                    <div class="stat-trend" style="color: var(--secondary)">Semua Acara</div>
                 </div>
                 <div class="stat-card card-gradient-3">
-                    <span class="stat-label">API Status</span>
-                    <div class="stat-value" style="color: var(--success); font-size: 1.5rem; margin-top: 0.5rem;">HEALTY</div>
-                    <div class="stat-trend">Connection Stable</div>
+                    <span class="stat-label">Status API</span>
+                    <div class="stat-value" style="color: var(--success); font-size: 1.5rem; margin-top: 0.5rem;">SEHAT</div>
+                    <div class="stat-trend">Koneksi Stabil</div>
                 </div>
             </div>
             
             <div class="table-wrapper">
                 <div class="table-header">
-                    <h3>Quick Access</h3>
+                    <h3>Akses Cepat</h3>
                 </div>
                 <div style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
-                    <p>Welcome to the premium admin panel. Use the sidebar to navigate between modules.</p>
+                    <p>Selamat datang di panel admin premium. Gunakan bilah sisi untuk menavigasi antar modul.</p>
                 </div>
             </div>
         `;
@@ -234,28 +240,28 @@ function renderDashboard(user) {
         content.innerHTML = `
             <div class="stats-grid">
                 <div class="stat-card card-gradient-1">
-                    <span class="stat-label">My Missions</span>
+                    <span class="stat-label">Misi Saya</span>
                     <div class="stat-value" id="stats-missions">--</div>
-                    <div class="stat-trend" style="color: var(--primary)">Total Created</div>
+                    <div class="stat-trend" style="color: var(--primary)">Total Dibuat</div>
                 </div>
                 <div class="stat-card card-gradient-2">
-                    <span class="stat-label">Pending Reviews</span>
+                    <span class="stat-label">Ulasan Tertunda</span>
                     <div class="stat-value" id="stats-pending">--</div>
-                    <div class="stat-trend" style="color: var(--secondary)">Action Required</div>
+                    <div class="stat-trend" style="color: var(--secondary)">Tindakan Diperlukan</div>
                 </div>
                 <div class="stat-card card-gradient-3">
-                    <span class="stat-label">Validated Tasks</span>
+                    <span class="stat-label">Tugas Divalidasi</span>
                     <div class="stat-value" id="stats-validated">--</div>
-                    <div class="stat-trend" style="color: var(--success)">Approved by Me</div>
+                    <div class="stat-trend" style="color: var(--success)">Disetujui oleh Saya</div>
                 </div>
             </div>
             
             <div class="table-wrapper">
                 <div class="table-header">
-                    <h3>Dosen Dashboard</h3>
+                    <h3>Dashboard Dosen</h3>
                 </div>
                 <div style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
-                    <p>Welcome, Pak/Bu. You can manage your missions and review student submissions using the sidebar.</p>
+                    <p>Selamat datang, Pak/Bu. Anda dapat mengelola misi Anda dan meninjau kiriman mahasiswa menggunakan bilah sisi.</p>
                 </div>
             </div>
         `;
@@ -264,27 +270,27 @@ function renderDashboard(user) {
         content.innerHTML = `
             <div class="stats-grid">
                 <div class="stat-card card-gradient-1">
-                    <span class="stat-label">Emerald Balance</span>
+                    <span class="stat-label">Saldo Emerald</span>
                     <div class="stat-value" id="userBalance">--</div>
-                    <div class="stat-trend" style="color:var(--primary)">Available to spend</div>
+                    <div class="stat-trend" style="color:var(--primary)">Tersedia untuk dibelanjakan</div>
                 </div>
                 <div class="stat-card card-gradient-2">
-                    <span class="stat-label">Completed Missions</span>
+                    <span class="stat-label">Misi Selesai</span>
                     <div class="stat-value" id="stats-missions-done">--</div>
-                    <div class="stat-trend" style="color:var(--secondary)">Points Earned</div>
+                    <div class="stat-trend" style="color:var(--secondary)">Poin Diperoleh</div>
                 </div>
                 <div class="stat-card card-gradient-3">
-                    <span class="stat-label">Discovery Hub</span>
+                    <span class="stat-label">Pusat Penemuan</span>
                     <div class="stat-value" id="stats-active-missions">--</div>
-                    <div class="stat-trend" style="color:var(--success)">Available Tasks</div>
+                    <div class="stat-trend" style="color:var(--success)">Tugas Tersedia</div>
                 </div>
             </div>
 
             <div class="card fade-in" style="margin-top: 2rem; padding: 2.5rem; text-align: center; background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.05)); border: 1px dashed var(--primary-light);">
                 <div style="font-size: 3rem; margin-bottom: 1rem;">👋</div>
-                <h2 style="font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem;">Welcome back, ${user.full_name || 'Student'}!</h2>
-                <p style="color: var(--text-muted); max-width: 500px; margin: 0 auto;">Ready to climb the leaderboard? Head over to the Discovery Hub to find new missions and earn more points for rewards.</p>
-                <button class="btn btn-primary" style="margin-top: 1.5rem; border-radius: 20px;" onclick="handleNavigation('missions', 'mahasiswa')">Explore Missions</button>
+                <h2 style="font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem;">Selamat datang kembali, ${user.full_name || 'Mahasiswa'}!</h2>
+                <p style="color: var(--text-muted); max-width: 500px; margin: 0 auto;">Siap untuk menaiki papan peringkat? Pergilah ke Pusat Penemuan untuk menemukan misi baru dan dapatkan lebih banyak poin untuk hadiah.</p>
+                <button class="btn btn-primary" style="margin-top: 1.5rem; border-radius: 20px;" onclick="handleNavigation('missions', 'mahasiswa')">Jelajahi Misi</button>
             </div>
         `;
         // Load student stats via API
@@ -303,4 +309,17 @@ async function loadStudentStats() {
         document.getElementById('stats-missions-done').textContent = (submissions.data.submissions || []).filter(s => s.user_id === user.id).length;
         document.getElementById('stats-active-missions').textContent = (missions.data.missions || []).length;
     } catch (e) { console.error(e); }
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('mainSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+
+    if (sidebar.classList.contains('active')) {
+        sidebar.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
+    } else {
+        sidebar.classList.add('active');
+        if (overlay) overlay.classList.add('active');
+    }
 }

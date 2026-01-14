@@ -19,21 +19,21 @@ class ProfileController {
                     <!-- Basic Info -->
                     <div class="table-wrapper" style="margin:0">
                         <div class="table-header">
-                            <h3>Edit Profile</h3>
+                            <h3>Edit Profil</h3>
                         </div>
                         <div style="padding: 1.5rem;">
                             <form id="profileForm" onsubmit="ProfileController.handleUpdateProfile(event)">
                                 <div class="form-group">
-                                    <label>Full Name</label>
+                                    <label>Nama Lengkap</label>
                                     <input type="text" name="full_name" value="${user.full_name}" required>
                                 </div>
                                 <div class="form-group">
-                                    <label>Email Address</label>
+                                    <label>Alamat Email</label>
                                     <input type="email" value="${user.email}" disabled style="opacity: 0.6; cursor: not-allowed;">
-                                    <small style="color:var(--text-muted)">Email cannot be changed contact admin.</small>
+                                    <small style="color:var(--text-muted)">Email tidak dapat diubah, hubungi admin.</small>
                                 </div>
                                 <div class="form-actions" style="margin-top: 1.5rem">
-                                    <button type="submit" class="btn btn-primary btn-block">Update Profile</button>
+                                    <button type="submit" class="btn btn-primary btn-block">Perbarui Profil</button>
                                 </div>
                             </form>
                         </div>
@@ -42,24 +42,24 @@ class ProfileController {
                     <!-- Change Password -->
                     <div class="table-wrapper" style="margin:0">
                         <div class="table-header">
-                            <h3>Change Password</h3>
+                            <h3>Ubah Kata Sandi</h3>
                         </div>
                         <div style="padding: 1.5rem;">
                             <form id="passwordForm" onsubmit="ProfileController.handleUpdatePassword(event)">
                                 <div class="form-group">
-                                    <label>Current Password</label>
+                                    <label>Kata Sandi Saat Ini</label>
                                     <input type="password" name="old_password" required placeholder="••••••••">
                                 </div>
                                 <div class="form-group">
-                                    <label>New Password</label>
+                                    <label>Kata Sandi Baru</label>
                                     <input type="password" name="new_password" required placeholder="••••••••" minlength="6">
                                 </div>
                                 <div class="form-group">
-                                    <label>Confirm New Password</label>
+                                    <label>Konfirmasi Kata Sandi Baru</label>
                                     <input type="password" id="confirm_password" required placeholder="••••••••" minlength="6">
                                 </div>
                                 <div class="form-actions" style="margin-top: 1.5rem">
-                                    <button type="submit" class="btn btn-primary btn-block" style="background: var(--secondary)">Change Password</button>
+                                    <button type="submit" class="btn btn-primary btn-block" style="background: var(--secondary)">Ubah Kata Sandi</button>
                                 </div>
                             </form>
                         </div>
@@ -76,7 +76,7 @@ class ProfileController {
 
         try {
             const res = await API.updateProfile(data);
-            showToast("Profile updated successfully");
+            showToast("Profil berhasil diperbarui");
 
             // Update local storage
             const user = JSON.parse(localStorage.getItem('user'));
@@ -97,13 +97,13 @@ class ProfileController {
         const confirm = document.getElementById('confirm_password').value;
 
         if (data.new_password !== confirm) {
-            showToast("Passwords do not match", "error");
+            showToast("Kata sandi tidak cocok", "error");
             return;
         }
 
         try {
             await API.updatePassword(data);
-            showToast("Password updated successfully");
+            showToast("Kata sandi berhasil diperbarui");
             e.target.reset();
         } catch (error) {
             showToast(error.message, "error");
