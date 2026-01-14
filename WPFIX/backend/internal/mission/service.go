@@ -109,6 +109,33 @@ func (s *MissionService) UpdateMission(id uint, req *UpdateMissionRequest) (*Mis
 		}
 	}
 
+	// Handle questions update if provided
+	if req.Questions != nil {
+		err := s.db.Transaction(func(tx *gorm.DB) error {
+			// Delete existing questions
+			if err := tx.Where("mission_id = ?", id).Delete(&MissionQuestion{}).Error; err != nil {
+				return err
+			}
+
+			// Add new questions
+			for _, q := range req.Questions {
+				newQ := MissionQuestion{
+					MissionID: id,
+					Question:  q.Question,
+					Options:   q.Options,
+					Answer:    q.Answer,
+				}
+				if err := tx.Create(&newQ).Error; err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return s.repo.FindByID(id)
 }
 

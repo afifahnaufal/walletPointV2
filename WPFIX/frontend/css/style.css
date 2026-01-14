@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+/* Fonts imported in index.html */
 
 :root {
     --primary: #6366f1;
@@ -37,7 +37,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
 body {
@@ -629,4 +629,163 @@ progress::-webkit-progress-bar {
 progress::-webkit-progress-value {
     background: linear-gradient(to right, var(--primary), var(--secondary));
     border-radius: 10px;
+}
+
+/* --- Responsive Design (Mobile) --- */
+
+/* Hamburger Toggle Button (Hidden by default on Desktop) */
+#sidebarToggle {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 1.75rem;
+    cursor: pointer;
+    color: var(--text-main);
+    margin-right: 1rem;
+    padding: 0.25rem;
+    border-radius: var(--radius-sm);
+    transition: background 0.2s;
+}
+
+#sidebarToggle:hover {
+    background: #f1f5f9;
+}
+
+/* Overlay for sidebar on mobile */
+#sidebarOverlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    z-index: 90;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+#sidebarOverlay.active {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+@media (max-width: 768px) {
+
+    /* Layout */
+    .dashboard-layout {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        transform: translateX(-110%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        width: 280px;
+        /* Fixed width sidebar on mobile */
+        box-shadow: var(--shadow-premium);
+        border-right: none;
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+    }
+
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    /* Top Bar */
+    .top-bar {
+        padding: 0 1rem;
+        justify-content: flex-start;
+    }
+
+    .top-bar .page-info {
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .top-bar .top-actions {
+        margin-left: auto;
+    }
+
+    #sidebarToggle {
+        display: block;
+    }
+
+    /* Content Body */
+    .content-body {
+        padding: 1.5rem 1rem;
+    }
+
+    /* Tables */
+    .table-wrapper {
+        border-radius: var(--radius-lg);
+    }
+
+    .premium-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+        /* Smooth scroll on iOS */
+    }
+
+    .premium-table th,
+    .premium-table td {
+        padding: 1rem;
+    }
+
+    /* Cards */
+    .stats-grid {
+        grid-template-columns: 1fr;
+        /* Force single column on mobile */
+    }
+
+    .stat-card {
+        padding: 1.5rem;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+    }
+
+    /* Modals */
+    .modal-card {
+        width: 95%;
+        max-height: 90vh;
+        margin: 1rem;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    /* Toast */
+    #toast-container {
+        left: 1rem;
+        right: 1rem;
+        bottom: 1rem;
+        width: auto;
+        align-items: center;
+    }
+
+    .toast {
+        width: 100%;
+        min-width: 0;
+        justify-content: flex-start;
+    }
+
+    /* Login Page */
+    .login-container {
+        padding: 2rem;
+        width: 90%;
+    }
 }

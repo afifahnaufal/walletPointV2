@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 errorMessage.classList.add('hidden');
 
                 if (typeof API === 'undefined') {
-                    throw new Error('System Error: API module not loaded correctly.');
+                    throw new Error('Kesalahan Sistem: Modul API tidak dimuat dengan benar.');
                 }
 
                 const response = await API.login(email, password);
@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (error) {
                 console.error(error);
-                errorMessage.textContent = error.message || 'An unknown error occurred';
+                errorMessage.textContent = error.message || 'Terjadi kesalahan yang tidak diketahui';
                 errorMessage.classList.remove('hidden');
             }
         });
