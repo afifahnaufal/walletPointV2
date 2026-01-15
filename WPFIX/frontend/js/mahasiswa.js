@@ -294,8 +294,13 @@ class MahasiswaController {
                                     <textarea name="submission_content" required placeholder="Ketik jawaban Anda, atau tempel tautan ke pekerjaan Anda (misalnya, GitHub, Cloud Drive)..." style="min-height: 150px; border-radius: 12px;"></textarea>
                                 </div>
                                 <div class="form-group">
-                                    <label style="font-weight: 600;">Bukti File (URL Opsional)</label>
-                                    <input type="text" name="file_url" placeholder="https://tautan-file-anda.com" style="border-radius: 12px;">
+                                    <label style="font-weight: 600;">Unggah Tangkapan Layar / File</label>
+                                    <input type="file" name="file" accept="image/*,.pdf" style="border-radius: 12px; padding: 0.5rem; border: 1px solid var(--border); width: 100%;">
+                                    <small style="color: var(--text-muted);">Format: JPG, PNG, PDF</small>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600;">Atau Tautan Eksternal (Opsional)</label>
+                                    <input type="text" name="file_url" placeholder="https://drive.google.com/..." style="border-radius: 12px;">
                                 </div>
                                 <div class="form-actions" style="margin-top: 2rem; display: flex; gap: 1rem;">
                                     <button type="button" class="btn btn-secondary" onclick="closeModal()" style="flex:1">Batal</button>
@@ -315,15 +320,18 @@ class MahasiswaController {
     static async handleMissionSubmission(e, missionId) {
         e.preventDefault();
         const formData = new FormData(e.target);
-        const data = Object.fromEntries(formData.entries());
-        data.mission_id = missionId;
+        formData.append('mission_id', missionId);
+
+        // No need to convert to Object.fromEntries logic anymore as API handles FormData now
+        // const data = Object.fromEntries(formData.entries());
+        // data.mission_id = missionId;
 
         try {
             const btn = e.target.querySelector('button[type="submit"]');
             btn.disabled = true;
             btn.textContent = 'Mengirim...';
 
-            await API.submitMissionSubmission(data);
+            await API.submitMissionSubmission(formData);
             showToast("Misi berhasil dikirim! Hadiah menunggu peninjauan.");
             closeModal();
             this.renderMissions();
@@ -396,11 +404,27 @@ class MahasiswaController {
     static async loadCatalog() {
         const grid = document.getElementById('shopGrid');
         try {
-            const productsRes = await API.getProducts({ limit: 100 });
-            const products = productsRes.data.products || [];
+            const user = JSON.parse(localStorage.getItem('user'));
+            const [productsRes, txRes] = await Promise.all([
+                API.getProducts({ limit: 100 }),
+                API.getTransactions(user.id)
+            ]);
+
+            let products = productsRes.data.products || [];
+            const txns = txRes.data.transactions || [];
+
+            // Filter out purchased items by matching name in transaction description
+            // Backend format: "Purchase: [Product Name]"
+            const boughtItems = new Set(
+                txns.filter(t => t.type === 'marketplace')
+                    .map(t => t.description.replace('Purchase: ', '').trim())
+            );
+
+            // Exclude bought items
+            products = products.filter(p => !boughtItems.has(p.name));
 
             if (products.length === 0) {
-                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:4rem; color:var(--text-muted);">Toko saat ini kehabisan stok.</div>';
+                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:4rem; color:var(--text-muted);">Toko saat ini kehabisan stok atau Anda telah memborong semuanya! 🎉</div>';
                 return;
             }
 
@@ -441,8 +465,8 @@ class MahasiswaController {
             const res = await API.getTransactions(userId);
             const txns = res.data.transactions || [];
 
-            // Filter only marketplace purchases
-            const purchases = txns.filter(t => t.type === 'marketplace_purchase');
+            // Filter only marketplace purchases (Backend saves type as 'marketplace' not 'marketplace_purchase')
+            const purchases = txns.filter(t => t.type === 'marketplace');
 
             if (purchases.length === 0) {
                 grid.innerHTML = `
@@ -461,7 +485,7 @@ class MahasiswaController {
                         📦
                     </div>
                     <div style="flex: 1;">
-                        <h4 style="margin: 0; color: var(--text-main); font-weight: 700;">${t.description.replace('Purchased ', '')}</h4>
+                        <h4 style="margin: 0; color: var(--text-main); font-weight: 700;">${t.description.replace('Purchase: ', '')}</h4>
                         <small style="color: var(--text-muted);">Ref: #PUR-${t.id} • ${new Date(t.created_at).toLocaleDateString()}</small>
                     </div>
                     <div style="text-align: right;">
@@ -717,8 +741,8 @@ class MahasiswaController {
                             <div class="form-group">
                                 <label style="font-weight: 600;">Penerima</label>
                                 <div style="position:relative;">
-                                    <input type="number" name="receiver_id" id="receiverIdInput" placeholder="Masukkan ID Siswa / NIM" required style="border-radius: 12px;">
-                                    <small style="display:block; margin-top:0.4rem; color:var(--text-muted);">Mengonfirmasi detail penerima setelah pemindaian...</small>
+                                    <input type="number" name="receiver_id" id="receiverIdInput" placeholder="Masukkan ID Siswa / NIM" required style="border-radius: 12px;" oninput="MahasiswaController.checkReceiver(this.value)">
+                                    <div id="receiverFeedback" style="margin-top: 0.5rem; font-size: 0.9rem; min-height: 1.2em; font-weight: 600;"></div>
                                 </div>
                             </div>
 
@@ -775,6 +799,49 @@ class MahasiswaController {
         } catch (e) { console.error(e); }
     }
 
+    static checkReceiver(id) {
+        const feedback = document.getElementById('receiverFeedback');
+        const btn = document.querySelector('#transferForm button[type="submit"]');
+
+        // Reset stored data
+        this.currentRecipient = null;
+
+        if (this.checkTimeout) clearTimeout(this.checkTimeout);
+
+        if (!id) {
+            feedback.innerHTML = '';
+            if (btn) btn.disabled = false;
+            return;
+        }
+
+        // Show searching state
+        feedback.innerHTML = '<span style="color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;"><span class="spinner" style="width:12px; height:12px; border-width:2px;"></span> Mencari pengguna...</span>';
+        if (btn) btn.disabled = true;
+
+        this.checkTimeout = setTimeout(async () => {
+            try {
+                const res = await API.lookupUser(id);
+                const user = res.data;
+                // Don't allow self-transfer
+                const currentUser = JSON.parse(localStorage.getItem('user'));
+                if (user.id == currentUser.id) {
+                    feedback.innerHTML = `<span style="color:var(--error);">❌ Tidak dapat mengirim ke diri sendiri</span>`;
+                    if (btn) btn.disabled = true;
+                    return;
+                }
+
+                // Store valid user for submission display
+                this.currentRecipient = user;
+
+                feedback.innerHTML = `<span style="color:var(--success);">✅ Penerima: <b>${user.full_name}</b> <small>(${user.role})</small></span>`;
+                if (btn) btn.disabled = false;
+            } catch (e) {
+                feedback.innerHTML = `<span style="color:var(--error);">❌ Pengguna tidak ditemukan</span>`;
+                if (btn) btn.disabled = true;
+            }
+        }, 500);
+    }
+
     static async handleTransferSubmit(e) {
         e.preventDefault();
         const formData = new FormData(e.target);
@@ -784,6 +851,9 @@ class MahasiswaController {
         delete data.receiver_id;
 
         const btn = e.target.querySelector('button[type="submit"]');
+
+        // Get name from stored check or fallback to ID
+        const recipientName = this.currentRecipient ? this.currentRecipient.full_name : `ID: ${data.receiver_user_id}`;
 
         try {
             btn.textContent = 'Memverifikasi Transaksi...';
@@ -802,7 +872,7 @@ class MahasiswaController {
                     <div style="background: #f8fafc; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; text-align: left; font-family: monospace; font-size: 0.85rem;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
                             <span>PENERIMA:</span>
-                            <span style="font-weight: 700;">USER#${data.receiver_id}</span>
+                            <span style="font-weight: 700; text-transform: uppercase;">${recipientName}</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
                             <span>HASH ID:</span>
@@ -895,8 +965,15 @@ class MahasiswaController {
     static async loadTransferHistory() {
         const tbody = document.querySelector('#transferHistoryTable tbody');
         try {
-            const res = await API.request('/mahasiswa/transfer/history', 'GET');
-            const transfers = res.data.transfers || [];
+            // Fetch both transfers and user wallet to identify self
+            const user = JSON.parse(localStorage.getItem('user'));
+            const [transfersRes, walletRes] = await Promise.all([
+                API.request('/mahasiswa/transfer/history', 'GET'),
+                API.getWallet(user.id) // Ensure we have the wallet ID
+            ]);
+
+            const transfers = transfersRes.data.transfers || [];
+            const myWalletId = walletRes.data.id;
 
             if (transfers.length === 0) {
                 tbody.innerHTML = `
@@ -910,21 +987,9 @@ class MahasiswaController {
                 return;
             }
 
-            const currentUser = JSON.parse(localStorage.getItem('user'));
-
             tbody.innerHTML = transfers.map(t => {
-                const isSender = t.sender_wallet_id === currentUser.wallet_id; // Using wallet_id logic might be strictly dependent on how API returns it. Simplified below.
-                const type = (t.description || '').includes(`Transfer from user ${currentUser.id}`) ? 'OUT' : 'IN'; // Fallback logic if IDs are tricky without full wallet objects
-
-                // Better logic: API should return enough info. 
-                // We'll trust the BE returns sender_wallet_id. We need our own wallet ID.
-                // For now, let's use the amount sign or description if possible. 
-                // BUT, since we just implemented the API, let's look at the response structure.
-
-                // Since our BE doesn't return IsSender flag directly, and we might not know our own wallet ID easily without an extra call.
-                // Let's assume description contains the clue as implemented in service.go
-
-                const isIncoming = t.description && t.description.includes(`Transfer from user`);
+                // Correct logic: Compare sender_wallet_id with myWalletId
+                const isIncoming = t.sender_wallet_id !== myWalletId;
 
                 return `
                 <tr>
@@ -934,8 +999,10 @@ class MahasiswaController {
                         </span>
                     </td>
                     <td>
-                         <div style="font-weight:600; color:var(--text-main);">User ID: ${isIncoming ? t.sender_wallet_id : t.receiver_wallet_id}</div> <!-- Simplified as we don't have joined user names yet -->
-                         <small style="color:var(--text-muted);">${t.description}</small>
+                         <div style="font-weight:600; color:var(--text-main);">
+                            ${isIncoming ? 'Dari Wallet ID: ' + t.sender_wallet_id : 'Ke Wallet ID: ' + t.receiver_wallet_id}
+                         </div>
+                         <small style="color:var(--text-muted);">${t.description || 'Tidak ada catatan'}</small>
                     </td>
                     <td style="font-weight: 700; color: ${isIncoming ? 'var(--success)' : 'var(--error)'}">
                         ${isIncoming ? '+' : '-'}${t.amount.toLocaleString()}

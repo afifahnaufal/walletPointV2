@@ -18,6 +18,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, allowedOrigins string, jwtExpiry in
 	// Apply global middleware
 	r.Use(middleware.CORS(allowedOrigins))
 	r.Use(middleware.Logger())
+	// Serve static files
+	r.Static("/uploads", "./public/uploads")
 
 	// API v1 group
 	api := r.Group("/api/v1")
@@ -134,6 +136,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, allowedOrigins string, jwtExpiry in
 		mahasiswaGroup.GET("/transfer/history", transferHandler.GetMyTransfers)
 		mahasiswaGroup.GET("/transfer/sent", transferHandler.GetSentTransfers)
 		mahasiswaGroup.GET("/transfer/received", transferHandler.GetReceivedTransfers)
+		mahasiswaGroup.GET("/users/lookup", userHandler.LookupUser) // Lookup user for transfer verification
 
 		// Marketplace Purchase
 		mahasiswaGroup.POST("/marketplace/purchase", marketplaceHandler.Purchase)
