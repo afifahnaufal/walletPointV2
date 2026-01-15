@@ -149,6 +149,21 @@ class API {
     }
 
     // ========================================
+    // ADMIN: External Integration
+    // ========================================
+    static async getExternalSources() {
+        return API.request('/admin/external/sources', 'GET');
+    }
+
+    static async createExternalSource(data) {
+        return API.request('/admin/external/sources', 'POST', data);
+    }
+
+    static async getMerchantStats() {
+        return API.request('/merchant/stats', 'GET');
+    }
+
+    // ========================================
     // MAHASISWA: Transfers
     // ========================================
     static async createTransfer(data) {
@@ -184,6 +199,10 @@ class API {
 
     static async reviewSubmission(id, data) {
         return API.request(`/dosen/submissions/${id}/review`, 'POST', data);
+    }
+
+    static async getDosenStats() {
+        return API.request('/dosen/stats', 'GET');
     }
 
     // ========================================
@@ -233,6 +252,10 @@ class API {
         return API.request('/mahasiswa/marketplace/purchase', 'POST', data);
     }
 
+    static async syncExternalPoints(data) {
+        return API.request('/mahasiswa/external/sync', 'POST', data);
+    }
+
     // Overload getProducts to handle roles if needed, or create specific
     // Admin uses getProducts (line 119) -> /admin/products
     // Mahasiswa uses renderShop -> needs /mahasiswa/marketplace/products
@@ -255,7 +278,18 @@ class API {
             }
 
             const response = await fetch(url, options);
-            const data = await response.json();
+
+            // Safely parse JSON
+            let data = {};
+            const text = await response.text();
+            try {
+                if (text) data = JSON.parse(text);
+            } catch (e) {
+                console.warn("Failed to parse JSON response:", text.substring(0, 100));
+                if (!response.ok) {
+                    throw new Error(`Server Error (${response.status}): ${response.statusText}`);
+                }
+            }
 
             if (!response.ok) {
                 if (response.status === 401) {

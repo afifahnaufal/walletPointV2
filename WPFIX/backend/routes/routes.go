@@ -3,6 +3,7 @@ package routes
 import (
 	"wallet-point/internal/audit"
 	"wallet-point/internal/auth"
+	"wallet-point/internal/external" // Add this
 	"wallet-point/internal/marketplace"
 	"wallet-point/internal/mission"
 	"wallet-point/internal/transfer"
@@ -30,6 +31,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, allowedOrigins string, jwtExpiry in
 	auditRepo := audit.NewAuditRepository(db)
 	missionRepo := mission.NewMissionRepository(db)
 	transferRepo := transfer.NewRepository(db)
+	externalRepo := external.NewRepository(db) // Add this
 
 	// Initialize services
 	authService := auth.NewAuthService(authRepo, jwtExpiry)
@@ -39,6 +41,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, allowedOrigins string, jwtExpiry in
 	auditService := audit.NewAuditService(auditRepo)
 	missionService := mission.NewMissionService(missionRepo, walletService, db)
 	transferService := transfer.NewService(transferRepo, walletRepo, walletService, db)
+	externalService := external.NewService(externalRepo, walletRepo, walletService, marketplaceService, missionService, auditService, db) // Add this
 
 	// Initialize handlers
 	authHandler := auth.NewAuthHandler(authService, auditService)
@@ -48,6 +51,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, allowedOrigins string, jwtExpiry in
 	auditHandler := audit.NewAuditHandler(auditService)
 	missionHandler := mission.NewMissionHandler(missionService, auditService)
 	transferHandler := transfer.NewHandler(transferService)
+	externalHandler := external.NewHandler(externalService, auditService) // Add this
 
 	// ========================================
 	// PUBLIC ROUTES
@@ -96,6 +100,12 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, allowedOrigins string, jwtExpiry in
 
 		// Audit Logs
 		adminGroup.GET("/audit-logs", auditHandler.GetAll)
+
+		// External Sources Management
+		adminGroup.GET("/external/sources", externalHandler.ListSources)
+		adminGroup.POST("/external/sources", externalHandler.RegisterSource)
+		adminGroup.POST("/external/products", externalHandler.RegisterProduct)
+		adminGroup.POST("/external/missions", externalHandler.RegisterMission)
 	}
 
 	// ========================================
@@ -114,6 +124,9 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, allowedOrigins string, jwtExpiry in
 		// Submission Validation
 		dosenGroup.GET("/submissions", missionHandler.GetAllSubmissions)
 		dosenGroup.POST("/submissions/:id/review", missionHandler.ReviewSubmission)
+
+		// Dashboard Stats
+		dosenGroup.GET("/stats", missionHandler.GetDosenStats)
 	}
 
 	// ========================================
@@ -146,7 +159,25 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, allowedOrigins string, jwtExpiry in
 		mahasiswaGroup.GET("/wallet", walletHandler.GetMyWallet)
 		mahasiswaGroup.GET("/transactions", walletHandler.GetMyTransactions) // Replaces old getTransactions use case
 		mahasiswaGroup.POST("/payment/token", walletHandler.GeneratePaymentToken)
+		mahasiswaGroup.GET("/qr/me", walletHandler.GetMyQRCode)
+
+		// External Point Sync
+		mahasiswaGroup.POST("/external/sync", externalHandler.SyncPoints)
 	}
+
+	// ========================================
+	// MERCHANT ROUTES
+	// ========================================
+	merchantGroup := api.Group("/merchant")
+	merchantGroup.Use(middleware.AuthMiddleware())
+	merchantGroup.Use(middleware.RoleMiddleware("merchant", "admin"))
+	{
+		merchantGroup.POST("/payment/scan", walletHandler.MerchantScan)
+		merchantGroup.GET("/stats", walletHandler.GetMerchantStats)
+	}
+
+	// Global QR Status Check
+	api.GET("/payment/status/:token", walletHandler.CheckTokenStatus)
 
 	// Health check
 	api.GET("/health", func(c *gin.Context) {

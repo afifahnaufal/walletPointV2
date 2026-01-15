@@ -10,7 +10,7 @@ type User struct {
 	PasswordHash string    `json:"-" gorm:"column:password_hash;not null"`
 	FullName     string    `json:"full_name" gorm:"not null"`
 	NimNip       string    `json:"nim_nip" gorm:"uniqueIndex;not null"`
-	Role         string    `json:"role" gorm:"type:enum('admin','dosen','mahasiswa');not null"`
+	Role         string    `json:"role" gorm:"type:enum('admin','dosen','mahasiswa','merchant');not null"`
 	Status       string    `json:"status" gorm:"type:enum('active','inactive','suspended');default:'active'"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
@@ -30,7 +30,7 @@ type RegisterRequest struct {
 	Password string `json:"password" binding:"required,min=6"`
 	FullName string `json:"full_name" binding:"required"`
 	NimNip   string `json:"nim_nip" binding:"required"`
-	Role     string `json:"role" binding:"required,oneof=admin dosen mahasiswa"`
+	Role     string `json:"role" binding:"required,oneof=admin dosen mahasiswa merchant"`
 }
 
 type LoginResponse struct {

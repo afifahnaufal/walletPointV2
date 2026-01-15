@@ -93,6 +93,11 @@ function renderNavigation(role) {
             { label: 'Scan QR', href: '#transfer' },
             { label: 'Wallet', href: '#history' }
         );
+    } else if (role === 'merchant') {
+        items.push(
+            { label: 'Dashboard', href: '#merchant-dashboard' },
+            { label: 'Kasir Scan', href: '#merchant-scanner' }
+        );
     }
 
     items.push({ label: 'Pengaturan', href: '#profile' });
@@ -197,6 +202,18 @@ function handleNavigation(target, role) {
                 renderDashboard({ role: 'mahasiswa' });
                 title.textContent = 'Dashboard Mahasiswa';
         }
+    } else if (role === 'merchant') {
+        switch (target) {
+            case 'merchant-scanner':
+                MerchantController.renderMerchantScanner();
+                break;
+            case 'profile':
+                ProfileController.renderProfile();
+                break;
+            default:
+                renderDashboard({ role: 'merchant' });
+                title.textContent = 'Dashboard Kasir';
+        }
     }
 }
 
@@ -266,7 +283,7 @@ function renderDashboard(user) {
             </div>
         `;
         DosenController.loadDosenStats();
-    } else {
+    } else if (user.role === 'mahasiswa') {
         content.innerHTML = `
             <div class="stats-grid">
                 <div class="stat-card card-gradient-1">
@@ -295,6 +312,34 @@ function renderDashboard(user) {
         `;
         // Load student stats via API
         loadStudentStats();
+    } else if (user.role === 'merchant') {
+        content.innerHTML = `
+            <div class="stats-grid">
+                <div class="stat-card card-gradient-1">
+                    <span class="stat-label">Total Penjualan Hari Ini</span>
+                    <div class="stat-value" id="stats-merchant-sales">--</div>
+                    <div class="stat-trend" style="color:var(--primary)">Poin Terkumpul</div>
+                </div>
+                <div class="stat-card card-gradient-2">
+                    <span class="stat-label">Jumlah Transaksi</span>
+                    <div class="stat-value" id="stats-merchant-count">--</div>
+                    <div class="stat-trend" style="color:var(--secondary)">Sesi Berhasil</div>
+                </div>
+                 <div class="stat-card card-gradient-3">
+                    <span class="stat-label">Saldo Emerald (Kredit)</span>
+                    <div class="stat-value" id="stats-merchant-balance">--</div>
+                    <div class="stat-trend" style="color:var(--success)">Total Kredit Masuk</div>
+                </div>
+            </div>
+
+            <div class="card fade-in" style="margin-top: 2rem; padding: 2.5rem; text-align: center; background: white; border: 1px solid var(--primary-light); border-radius:30px;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🏧</div>
+                <h2 style="font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem;">Terminal Kasir WalletPoint</h2>
+                <p style="color: var(--text-muted); max-width: 500px; margin: 0 auto;">Gunakan fitur "Kasir Scan" di bilah sisi untuk memproses pembayaran mahasiswa menggunakan QR Code mereka.</p>
+                <button class="btn btn-primary" style="margin-top: 1.5rem; border-radius: 20px; padding: 1rem 2rem;" onclick="handleNavigation('merchant-scanner', 'merchant')">Mulai Scan QR 📷</button>
+            </div>
+        `;
+        MerchantController.loadMerchantStats();
     }
 }
 

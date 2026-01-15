@@ -1,402 +1,408 @@
 package wallet
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
-	"sync"
 	"time"
 
+	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
 )
 
 type WalletService struct {
-	repo   *WalletRepository
-	db     *gorm.DB
-	tokens map[string]*PaymentToken
-	mu     sync.RWMutex
+	repo *WalletRepository
+	db   *gorm.DB
 }
 
 func NewWalletService(repo *WalletRepository, db *gorm.DB) *WalletService {
 	return &WalletService{
-		repo:   repo,
-		db:     db,
-		tokens: make(map[string]*PaymentToken),
+		repo: repo,
+		db:   db,
 	}
 }
 
-// GetAllWallets gets all wallets with user information
-func (s *WalletService) GetAllWallets() ([]WalletWithUser, error) {
-	return s.repo.GetAllWithUsers()
-}
-
-// GetWalletByID gets wallet by ID
-func (s *WalletService) GetWalletByID(walletID uint) (*Wallet, error) {
-	return s.repo.FindByID(walletID)
-}
-
-// GetWalletByUserID gets wallet by user ID
+// GetWalletByUserID retrieves a user's wallet
 func (s *WalletService) GetWalletByUserID(userID uint) (*Wallet, error) {
 	return s.repo.FindByUserID(userID)
 }
 
-// AdjustPoints manually adjusts wallet points (admin only)
+// GetWalletByID finds wallet by ID
+func (s *WalletService) GetWalletByID(walletID uint) (*Wallet, error) {
+	return s.repo.FindByID(walletID)
+}
+
+// AdjustPoints adds or subtracts points from a wallet
 func (s *WalletService) AdjustPoints(req *AdjustmentRequest, adminID uint) error {
-	// Start transaction
-	tx := s.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		delta := req.Amount
+		if req.Direction == "debit" {
+			delta = -req.Amount
 		}
-	}()
 
-	// Check if wallet exists
-	wallet, err := s.repo.FindByID(req.WalletID)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	// Calculate delta
-	delta := req.Amount
-	if req.Direction == "debit" {
-		// Check if balance is sufficient for debit
-		if wallet.Balance < req.Amount {
-			tx.Rollback()
-			return errors.New("insufficient balance")
+		// Check balance for debit
+		if req.Direction == "debit" {
+			wallet, err := s.repo.FindByID(req.WalletID)
+			if err != nil {
+				return err
+			}
+			if wallet.Balance < req.Amount {
+				return errors.New("insufficient balance")
+			}
 		}
-		delta = -req.Amount
-	}
 
-	// Create transaction record
-	transaction := &WalletTransaction{
-		WalletID:    req.WalletID,
-		Type:        "adjustment",
-		Amount:      req.Amount,
-		Direction:   req.Direction,
-		Status:      "success",
-		Description: req.Description,
-		CreatedBy:   "admin",
-	}
+		err := s.repo.UpdateBalance(tx, req.WalletID, delta)
+		if err != nil {
+			return err
+		}
 
-	if err := s.repo.CreateTransaction(tx, transaction); err != nil {
-		tx.Rollback()
-		return errors.New("failed to create transaction")
-	}
+		txn := &WalletTransaction{
+			WalletID:    req.WalletID,
+			Type:        "adjustment",
+			Amount:      req.Amount,
+			Direction:   req.Direction,
+			Status:      "success",
+			Description: req.Description,
+			CreatedBy:   "admin",
+		}
 
-	// Update balance
-	if err := s.repo.UpdateBalance(tx, req.WalletID, delta); err != nil {
-		tx.Rollback()
-		return errors.New("failed to update balance")
-	}
-
-	return tx.Commit().Error
+		return s.repo.CreateTransaction(tx, txn)
+	})
 }
 
-// ResetWallet resets wallet to specific balance (emergency use)
+// ResetWallet resets a wallet to a specific balance
 func (s *WalletService) ResetWallet(req *ResetWalletRequest, adminID uint) error {
-	// Start transaction
-	tx := s.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		wallet, err := s.repo.FindByID(req.WalletID)
+		if err != nil {
+			return err
 		}
-	}()
 
-	// Check if wallet exists
-	wallet, err := s.repo.FindByID(req.WalletID)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
+		err = s.repo.SetBalance(tx, req.WalletID, req.NewBalance)
+		if err != nil {
+			return err
+		}
 
-	oldBalance := wallet.Balance
-	delta := req.NewBalance - oldBalance
+		txn := &WalletTransaction{
+			WalletID:    req.WalletID,
+			Type:        "adjustment",
+			Amount:      int(math.Abs(float64(req.NewBalance - wallet.Balance))),
+			Direction:   "debit", // default direction, could be more specific
+			Status:      "success",
+			Description: "Reset Wallet: " + req.Reason,
+			CreatedBy:   "admin",
+		}
+		if req.NewBalance > wallet.Balance {
+			txn.Direction = "credit"
+		}
 
-	// Create adjustment transaction
-	direction := "credit"
-	amount := delta
-	if delta < 0 {
-		direction = "debit"
-		amount = -delta
-	}
-
-	transaction := &WalletTransaction{
-		WalletID:    req.WalletID,
-		Type:        "adjustment",
-		Amount:      amount,
-		Direction:   direction,
-		Status:      "success",
-		Description: fmt.Sprintf("Wallet reset: %s (old balance: %d)", req.Reason, oldBalance),
-		CreatedBy:   "admin",
-	}
-
-	if err := s.repo.CreateTransaction(tx, transaction); err != nil {
-		tx.Rollback()
-		return errors.New("failed to create transaction")
-	}
-
-	// Set new balance
-	if err := s.repo.SetBalance(tx, req.WalletID, req.NewBalance); err != nil {
-		tx.Rollback()
-		return errors.New("failed to reset balance")
-	}
-
-	return tx.Commit().Error
+		return s.repo.CreateTransaction(tx, txn)
+	})
 }
 
-// GetAllTransactions gets all transactions with pagination and filters
-func (s *WalletService) GetAllTransactions(params TransactionListParams) (*TransactionListResponse, error) {
-	// Default pagination
-	if params.Page < 1 {
-		params.Page = 1
-	}
-	if params.Limit < 1 {
-		params.Limit = 20
-	}
-
-	transactions, total, err := s.repo.GetTransactions(params)
-	if err != nil {
-		return nil, err
-	}
-
-	totalPages := int(math.Ceil(float64(total) / float64(params.Limit)))
-
-	return &TransactionListResponse{
-		Transactions: transactions,
-		Total:        total,
-		Page:         params.Page,
-		Limit:        params.Limit,
-		TotalPages:   totalPages,
-	}, nil
+func (s *WalletService) GetTransactions(params TransactionListParams) ([]TransactionWithDetails, int64, error) {
+	return s.repo.GetTransactions(params)
 }
 
-// GetWalletTransactions gets transactions for specific wallet
+// GetAllTransactions is an alias for GetTransactions with default params or specifically for admin
+func (s *WalletService) GetAllTransactions(params TransactionListParams) ([]TransactionWithDetails, int64, error) {
+	return s.repo.GetTransactions(params)
+}
+
 func (s *WalletService) GetWalletTransactions(walletID uint, limit int) ([]WalletTransaction, error) {
-	// Check if wallet exists
-	_, err := s.repo.FindByID(walletID)
-	if err != nil {
-		return nil, err
-	}
-
-	if limit < 1 {
-		limit = 50
-	}
-
 	return s.repo.GetWalletTransactions(walletID, limit)
 }
 
-// ProcessMissionReward credits a user's wallet for a completed mission
-func (s *WalletService) ProcessMissionReward(studentID uint, amount int, missionTitle string, missionID uint, reviewerID uint) error {
-	// Start transaction
-	tx := s.db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// Get student's wallet
-	wallet, err := s.repo.FindByUserID(studentID)
-	if err != nil {
-		tx.Rollback()
-		return fmt.Errorf("student wallet not found: %v", err)
-	}
-
-	// Create transaction record
-	transaction := &WalletTransaction{
-		WalletID:    wallet.ID,
-		Type:        "mission",
-		Amount:      amount,
-		Direction:   "credit",
-		ReferenceID: &missionID,
-		Status:      "success",
-		Description: fmt.Sprintf("Reward for completing mission: %s", missionTitle),
-		CreatedBy:   "dosen",
-	}
-
-	if err := s.repo.CreateTransaction(tx, transaction); err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to create transaction record: %v", err)
-	}
-
-	// Update balance
-	if err := s.repo.UpdateBalance(tx, wallet.ID, amount); err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to update wallet balance: %v", err)
-	}
-
-	return tx.Commit().Error
-}
-
-// ProcessMissionRewardWithTx credits a user's wallet for a completed mission within an existing transaction
-func (s *WalletService) ProcessMissionRewardWithTx(tx *gorm.DB, studentID uint, amount int, missionTitle string, missionID uint, reviewerID uint) error {
-	if tx == nil {
-		return errors.New("transaction required")
-	}
-
-	// Get student's wallet
-	wallet, err := s.repo.FindByUserID(studentID)
-	if err != nil {
-		return fmt.Errorf("student wallet not found: %v", err)
-	}
-
-	// Create transaction record
-	transaction := &WalletTransaction{
-		WalletID:    wallet.ID,
-		Type:        "mission",
-		Amount:      amount,
-		Direction:   "credit",
-		ReferenceID: &missionID,
-		Status:      "success",
-		Description: fmt.Sprintf("Reward for completing mission: %s", missionTitle),
-		CreatedBy:   "dosen",
-	}
-
-	if err := s.repo.CreateTransaction(tx, transaction); err != nil {
-		return fmt.Errorf("failed to create transaction record: %v", err)
-	}
-
-	// Update balance
-	if err := s.repo.UpdateBalance(tx, wallet.ID, amount); err != nil {
-		return fmt.Errorf("failed to update wallet balance: %v", err)
-	}
-
-	return nil
-}
-
-// GetLeaderboard gets top users
 func (s *WalletService) GetLeaderboard(limit int) ([]WalletWithUser, error) {
-	if limit < 1 {
-		limit = 10
-	}
 	return s.repo.GetLeaderboard(limit)
 }
 
-// DebitWithTransaction debits a wallet within an existing transaction
-func (s *WalletService) DebitWithTransaction(tx *gorm.DB, walletID uint, amount int, txType, description string) error {
-	// Get wallet
-	wallet, err := s.repo.FindByID(walletID)
-	if err != nil {
-		return fmt.Errorf("wallet not found: %v", err)
-	}
-
-	// Check balance
-	if wallet.Balance < amount {
-		return fmt.Errorf("insufficient balance. Current: %d, Required: %d", wallet.Balance, amount)
-	}
-
-	// Create transaction record
-	transaction := &WalletTransaction{
-		WalletID:    walletID,
-		Type:        txType,
-		Amount:      amount,
-		Direction:   "debit",
-		Status:      "success",
-		Description: description,
-		CreatedBy:   "system",
-	}
-
-	if err := s.repo.CreateTransaction(tx, transaction); err != nil {
-		return fmt.Errorf("failed to create debit transaction: %v", err)
-	}
-
-	// Update balance (negative for debit)
-	if err := s.repo.UpdateBalance(tx, walletID, -amount); err != nil {
-		return fmt.Errorf("failed to debit wallet: %v", err)
-	}
-
-	return nil
+func (s *WalletService) GetAllWallets() ([]WalletWithUser, error) {
+	return s.repo.GetAllWithUsers()
 }
 
-// CreditWithTransaction credits a wallet within an existing transaction
-func (s *WalletService) CreditWithTransaction(tx *gorm.DB, walletID uint, amount int, txType, description string) error {
-	// Get wallet
-	_, err := s.repo.FindByID(walletID)
-	if err != nil {
-		return fmt.Errorf("wallet not found: %v", err)
-	}
-
-	// Create transaction record
-	transaction := &WalletTransaction{
-		WalletID:    walletID,
-		Type:        txType,
-		Amount:      amount,
-		Direction:   "credit",
-		Status:      "success",
-		Description: description,
-		CreatedBy:   "system",
-	}
-
-	if err := s.repo.CreateTransaction(tx, transaction); err != nil {
-		return fmt.Errorf("failed to create credit transaction: %v", err)
-	}
-
-	// Update balance (positive for credit)
-	if err := s.repo.UpdateBalance(tx, walletID, amount); err != nil {
-		return fmt.Errorf("failed to credit wallet: %v", err)
-	}
-
-	return nil
-}
-
-// GeneratePaymentToken simulates generating a secure QR token for payment
-func (s *WalletService) GeneratePaymentToken(userID uint, amount int, merchant string, txType string) (*PaymentToken, error) {
+// GeneratePaymentToken creates a temporary token for QR payment
+func (s *WalletService) GeneratePaymentToken(req PaymentTokenRequest, userID uint) (*PaymentToken, error) {
+	// 1. Validate wallet balance
 	wallet, err := s.repo.FindByUserID(userID)
 	if err != nil {
 		return nil, errors.New("wallet not found")
 	}
 
-	if wallet.Balance < amount {
-		return nil, fmt.Errorf("insufficient balance for token generation. Current: %d, Required: %d", wallet.Balance, amount)
+	if wallet.Balance < req.Amount {
+		return nil, errors.New("insufficient points for this transaction")
 	}
 
-	tokenCode := fmt.Sprintf("WPT-%d-%d", time.Now().Unix(), userID)
+	// 2. Generate secure random token
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return nil, err
+	}
+	tokenCode := hex.EncodeToString(b)
+
+	// Generate QR Code Image
+	qrPayload := fmt.Sprintf("WPT:%s:%d:%s", tokenCode, req.Amount, req.Merchant)
+	png, err := qrcode.Encode(qrPayload, qrcode.Medium, 256)
+	if err != nil {
+		return nil, err
+	}
 
 	paymentToken := &PaymentToken{
-		Token:    tokenCode,
-		Amount:   amount,
-		Merchant: merchant,
-		WalletID: wallet.ID,
-		Type:     txType,
-		Expiry:   time.Now().Add(10 * time.Minute),
+		Token:        tokenCode,
+		QRCodeBase64: base64.StdEncoding.EncodeToString(png),
+		Amount:       req.Amount,
+		Merchant:     req.Merchant,
+		Expiry:       time.Now().Add(10 * time.Minute),
+		WalletID:     wallet.ID,
+		Type:         req.Type,
+		Status:       "active",
 	}
 
-	// Store token
-	s.mu.Lock()
-	s.tokens[tokenCode] = paymentToken
-	s.mu.Unlock()
+	if err := s.db.Create(paymentToken).Error; err != nil {
+		return nil, err
+	}
 
 	return paymentToken, nil
 }
 
-// ValidateAndConsumeToken verifies if a token is valid and removes it if successful
+// ValidateAndConsumeToken verifies if a token is valid (legacy support for some modules)
 func (s *WalletService) ValidateAndConsumeToken(tokenCode string, userID uint, amount int) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	token, exists := s.tokens[tokenCode]
-	if !exists {
+	var token PaymentToken
+	err := s.db.Where("token = ? AND status = ?", tokenCode, "active").First(&token).Error
+	if err != nil {
 		return errors.New("invalid or expired QR token")
 	}
 
 	if time.Now().After(token.Expiry) {
-		delete(s.tokens, tokenCode)
+		s.db.Model(&token).Update("status", "expired")
 		return errors.New("QR token has expired")
 	}
 
-	// Verify wallet ownership
 	wallet, err := s.repo.FindByUserID(userID)
 	if err != nil || wallet.ID != token.WalletID {
 		return errors.New("token does not belong to this user")
 	}
 
-	// Verify amount (optional, but good for security)
 	if token.Amount != amount {
 		return fmt.Errorf("token amount mismatch. Expected: %d, Found: %d", token.Amount, amount)
 	}
 
-	// Token is valid, consume it
-	delete(s.tokens, tokenCode)
-	return nil
+	return s.db.Model(&token).Update("status", "consumed").Error
+}
+
+// MerchantConsumeToken allows a merchant to scan and consume a student's payment token
+func (s *WalletService) MerchantConsumeToken(tokenCode string, merchantID uint) (*WalletTransaction, error) {
+	var token PaymentToken
+	err := s.db.Where("token = ? AND status = ?", tokenCode, "active").First(&token).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("invalid or expired QR token")
+		}
+		return nil, err
+	}
+
+	if time.Now().After(token.Expiry) {
+		s.db.Model(&token).Update("status", "expired")
+		return nil, errors.New("QR token has expired")
+	}
+
+	merchantWallet, err := s.repo.FindByUserID(merchantID)
+	if err != nil {
+		return nil, errors.New("merchant wallet not found")
+	}
+
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Deduct from student
+		err := s.repo.UpdateBalance(tx, token.WalletID, -token.Amount)
+		if err != nil {
+			return err
+		}
+
+		// 2. Credit merchant
+		err = s.repo.UpdateBalance(tx, merchantWallet.ID, token.Amount)
+		if err != nil {
+			return err
+		}
+
+		// 3. Create debit record for student
+		description := fmt.Sprintf("QR Payment to %s", token.Merchant)
+		studentTxn := &WalletTransaction{
+			WalletID:    token.WalletID,
+			Type:        "marketplace",
+			Amount:      token.Amount,
+			Direction:   "debit",
+			Status:      "success",
+			Description: description,
+		}
+
+		// 4. Create credit record for merchant
+		merchantTxn := &WalletTransaction{
+			WalletID:    merchantWallet.ID,
+			Type:        "marketplace_sale",
+			Amount:      token.Amount,
+			Direction:   "credit",
+			Status:      "success",
+			Description: fmt.Sprintf("Sale via QR: %s", description),
+		}
+
+		if err := tx.Create(studentTxn).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(merchantTxn).Error; err != nil {
+			return err
+		}
+
+		// 5. Update token status
+		if err := tx.Model(&token).Update("status", "consumed").Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	return nil, err
+}
+
+// CheckTokenStatus checks if a token still exists
+func (s *WalletService) CheckTokenStatus(tokenCode string) (bool, error) {
+	var token PaymentToken
+	err := s.db.Where("token = ? AND status = ?", tokenCode, "active").First(&token).Error
+	if err != nil {
+		return false, nil
+	}
+
+	if time.Now().After(token.Expiry) {
+		s.db.Model(&token).Update("status", "expired")
+		return false, nil
+	}
+
+	return true, nil
+}
+
+// DebitWithTransaction handles point deduction within an existing transaction
+func (s *WalletService) DebitWithTransaction(tx *gorm.DB, walletID uint, amount int, txnType string, description string) error {
+	// 1. Check balance
+	wallet, err := s.repo.FindByID(walletID)
+	if err != nil {
+		return err
+	}
+	if wallet.Balance < amount {
+		return errors.New("insufficient balance")
+	}
+
+	// 2. Update balance
+	if err := s.repo.UpdateBalance(tx, walletID, -amount); err != nil {
+		return err
+	}
+
+	// 3. Create transaction record
+	txn := &WalletTransaction{
+		WalletID:    walletID,
+		Type:        txnType,
+		Amount:      amount,
+		Direction:   "debit",
+		Status:      "success",
+		Description: description,
+	}
+
+	return s.repo.CreateTransaction(tx, txn)
+}
+
+// CreditWithTransaction handles point addition within an existing transaction
+func (s *WalletService) CreditWithTransaction(tx *gorm.DB, walletID uint, amount int, txnType string, description string) error {
+	// 1. Update balance
+	if err := s.repo.UpdateBalance(tx, walletID, amount); err != nil {
+		return err
+	}
+
+	// 2. Create transaction record
+	txn := &WalletTransaction{
+		WalletID:    walletID,
+		Type:        txnType,
+		Amount:      amount,
+		Direction:   "credit",
+		Status:      "success",
+		Description: description,
+	}
+
+	return s.repo.CreateTransaction(tx, txn)
+}
+
+// ProcessMissionRewardWithTx handles mission rewards within a transaction
+func (s *WalletService) ProcessMissionRewardWithTx(tx *gorm.DB, userID uint, amount int, missionTitle string, missionID uint, reviewerID uint) error {
+	wallet, err := s.repo.FindByUserID(userID)
+	if err != nil {
+		return err
+	}
+
+	// Create transaction record
+	txn := &WalletTransaction{
+		WalletID:    wallet.ID,
+		Type:        "mission",
+		Amount:      amount,
+		Direction:   "credit",
+		Status:      "success",
+		Description: "Reward for mission: " + missionTitle,
+		ReferenceID: &missionID,
+		CreatedBy:   "dosen",
+	}
+
+	// Update balance
+	if err := s.repo.UpdateBalance(tx, wallet.ID, amount); err != nil {
+		return err
+	}
+
+	return s.repo.CreateTransaction(tx, txn)
+}
+
+type MerchantStats struct {
+	TodaySales       int `json:"today_sales"`
+	TransactionCount int `json:"transaction_count"`
+	TotalBalance     int `json:"total_balance"`
+}
+
+func (s *WalletService) GetMerchantStats(userID uint) (*MerchantStats, error) {
+	wallet, err := s.repo.FindByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var stats MerchantStats
+	stats.TotalBalance = wallet.Balance
+
+	location, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		location = time.Local
+	}
+	now := time.Now().In(location)
+	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, location)
+
+	var todaySales int64
+	var count int64
+
+	s.db.Model(&WalletTransaction{}).
+		Where("wallet_id = ? AND type = ? AND created_at >= ?", wallet.ID, "marketplace_sale", startOfDay).
+		Select("COALESCE(SUM(amount), 0)").
+		Scan(&todaySales)
+
+	s.db.Model(&WalletTransaction{}).
+		Where("wallet_id = ? AND type = ? AND created_at >= ?", wallet.ID, "marketplace_sale", startOfDay).
+		Count(&count)
+
+	stats.TodaySales = int(todaySales)
+	stats.TransactionCount = int(count)
+
+	return &stats, nil
+}
+
+func (s *WalletService) GetMyQRCode(userID uint) (string, error) {
+	qrPayload := fmt.Sprintf("WPUSER:%d", userID)
+	png, err := qrcode.Encode(qrPayload, qrcode.Medium, 256)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(png), nil
 }

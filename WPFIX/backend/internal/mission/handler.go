@@ -331,3 +331,23 @@ func (h *MissionHandler) ReviewSubmission(c *gin.Context) {
 		UserAgent: c.Request.UserAgent(),
 	})
 }
+
+// GetDosenStats handles getting Dosen dashboard stats
+// @Summary Get Dosen stats
+// @Description Get statistics for Dosen dashboard
+// @Tags Dosen - Missions
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} utils.Response{data=DosenStatsResponse}
+// @Router /dosen/stats [get]
+func (h *MissionHandler) GetDosenStats(c *gin.Context) {
+	dosenID := c.GetUint("user_id")
+
+	stats, err := h.service.GetDosenStats(dosenID)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to get stats", err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Stats retrieved successfully", stats)
+}

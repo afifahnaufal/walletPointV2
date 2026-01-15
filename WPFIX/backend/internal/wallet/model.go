@@ -20,7 +20,7 @@ func (Wallet) TableName() string {
 type WalletTransaction struct {
 	ID          uint      `json:"id" gorm:"primaryKey"`
 	WalletID    uint      `json:"wallet_id" gorm:"not null"`
-	Type        string    `json:"type" gorm:"type:enum('mission','task','transfer_in','transfer_out','marketplace','external','adjustment','topup');not null"`
+	Type        string    `json:"type" gorm:"type:enum('mission','task','transfer_in','transfer_out','marketplace','marketplace_sale','external','adjustment','topup');not null"`
 	Amount      int       `json:"amount" gorm:"not null"`
 	Direction   string    `json:"direction" gorm:"type:enum('credit','debit');not null"`
 	ReferenceID *uint     `json:"reference_id"`

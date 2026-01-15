@@ -528,24 +528,34 @@ class AdminController {
     static async renderProducts() {
         const content = document.getElementById('mainContent');
         content.innerHTML = `
-            <div class="table-wrapper">
-                <div class="table-header">
-                    <h3>Katalog Marketplace</h3>
-                    <button class="btn btn-primary" onclick="AdminController.showProductModal()">+ Buat Produk</button>
+            <div class="fade-in">
+                <div class="table-header" style="margin-bottom: 2rem;">
+                    <div>
+                        <h2 style="font-weight: 700; color: var(--text-main);">Katalog Toko Hadiah</h2>
+                        <p style="color: var(--text-muted);">Kelola item dan stok untuk penukaran poin mahasiswa</p>
+                    </div>
+                    <div style="display:flex; gap:1rem;">
+                        <button class="btn" style="background:white; border:1px solid var(--border);" onclick="AdminController.renderProducts()">Segarkan 🔄</button>
+                        <button class="btn btn-primary" onclick="AdminController.showProductModal()">+ Tambah Barang</button>
+                    </div>
                 </div>
-                <div style="overflow-x: auto;">
-                    <table class="premium-table" id="productsTable">
-                        <thead>
-                            <tr>
-                                <th>Detail Produk</th>
-                                <th>Harga</th>
-                                <th>Stok</th>
-                                <th>Status</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody><tr><td colspan="5" class="text-center">Menyingkronkan Marketplace...</td></tr></tbody>
-                    </table>
+                
+                <div class="table-wrapper">
+                    <div style="overflow-x: auto;">
+                        <table class="premium-table" id="productsTable">
+                            <thead>
+                                <tr>
+                                    <th>Detail Produk</th>
+                                    <th>Kategori</th>
+                                    <th>Harga Poin</th>
+                                    <th>Ketersediaan Stok</th>
+                                    <th>Status</th>
+                                    <th class="text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody><tr><td colspan="6" class="text-center">Menyingkronkan inventaris...</td></tr></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         `;
@@ -561,25 +571,35 @@ class AdminController {
             }
 
             tbody.innerHTML = products.map(p => `
-                <tr>
+                <tr class="fade-in-item">
                     <td>
                         <div style="display:flex; align-items:center; gap:1rem;">
-                            <div style="width:40px; height:40px; background:#f1f5f9; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">📦</div>
+                            <div style="width:45px; height:45px; background:linear-gradient(135deg, #f8fafc, #f1f5f9); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.5rem; border:1px solid var(--border);">
+                                ${p.image_url ? `<img src="${p.image_url}" style="width:100%; height:100%; object-fit:cover; border-radius:12px;">` : '🎁'}
+                            </div>
                             <div>
-                                <strong>${p.name}</strong><br>
-                                <small style="color:var(--text-muted)">${p.description || 'Tidak ada deskripsi'}</small>
+                                <strong style="color:var(--text-main); font-size:1rem;">${p.name}</strong><br>
+                                <small style="color:var(--text-muted); display:block; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.description || 'Tanpa keterangan'}</small>
                             </div>
                         </div>
                     </td>
-                    <td style="font-weight:800; color:var(--primary)">${p.price.toLocaleString()} pts</td>
+                    <td><span class="badge" style="background:#f1f5f9; color:var(--text-muted); text-transform:uppercase; font-size:0.75rem;">${p.category || 'General'}</span></td>
+                    <td style="font-weight:800; color:var(--primary); font-size:1.1rem;">${p.price.toLocaleString()}<small style="font-size:0.7rem; margin-left:2px; font-weight:600;">pts</small></td>
                     <td>
-                        <div style="font-weight:600;">${p.stock} unit</div>
-                        <progress value="${p.stock}" max="100" style="width:60px; height:6px;"></progress>
+                        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.4rem;">
+                            <span style="font-weight:700; color:var(--text-main);">${p.stock}</span>
+                            <small style="color:var(--text-muted);">unit tersisa</small>
+                        </div>
+                        <div style="width:80px; height:8px; background:#f1f5f9; border-radius:4px; overflow:hidden;">
+                            <div style="width:${Math.min(p.stock, 100)}%; height:100%; background:${p.stock > 10 ? 'var(--success)' : 'var(--error)'};"></div>
+                        </div>
                     </td>
                     <td><span class="badge ${p.status === 'active' ? 'status-active' : 'status-inactive'}">${p.status}</span></td>
-                    <td>
-                        <button class="btn-icon" onclick="AdminController.showProductModal(${p.id})" title="Edit Barang">✏️</button>
-                        <button class="btn-icon" style="color:var(--error)" onclick="AdminController.deleteProduct(${p.id})" title="Hapus Barang">🗑️</button>
+                    <td class="text-right">
+                        <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+                            <button class="btn-icon" style="background:#f1f5f9;" onclick="AdminController.showProductModal(${p.id})" title="Edit Barang">✏️</button>
+                            <button class="btn-icon" style="background:rgba(239, 68, 68, 0.05); color:var(--error);" onclick="AdminController.deleteProduct(${p.id})" title="Hapus Barang">🗑️</button>
+                        </div>
                     </td>
                 </tr>
             `).join('');
@@ -599,45 +619,48 @@ class AdminController {
 
         const modalHtml = `
             <div class="modal-overlay" onclick="closeModal(event)">
-                <div class="modal-card">
-                    <div class="modal-head">
-                        <h3>${id ? 'Ubah Produk' : 'Katalog Barang Baru'}</h3>
-                        <button class="btn-icon" onclick="closeModal()">×</button>
+                <div class="modal-card" style="max-width: 550px; border-radius: 20px; overflow: hidden;">
+                    <div class="modal-head" style="background: var(--primary); color: white; padding: 1.5rem 2rem;">
+                        <h3 style="margin:0;">${id ? '🛠️ Edit Produk' : '🎁 Produk Baru'}</h3>
+                        <button class="btn-icon" onclick="closeModal()" style="color:white;">×</button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body" style="padding: 2rem;">
                         <form id="productForm" onsubmit="AdminController.handleProductSubmit(event, ${id})">
                             <div class="form-group">
-                                <label>Nama Produk</label>
-                                <input type="text" name="name" value="${product?.name || ''}" required placeholder="misal: Hoodie Kampus">
+                                <label style="font-weight:600;">Nama Produk</label>
+                                <input type="text" name="name" value="${product?.name || ''}" required placeholder="misal: Hoodie Premium Kampus" style="border-radius: 10px;">
                             </div>
                             <div class="form-group">
-                                <label>Deskripsi Detail</label>
-                                <textarea name="description" placeholder="Deskripsikan barang..." style="min-height: 80px;">${product?.description || ''}</textarea>
+                                <label style="font-weight:600;">Deskripsi Produk</label>
+                                <textarea name="description" placeholder="Ceritakan tentang hadiah ini..." style="min-height: 100px; border-radius: 10px;">${product?.description || ''}</textarea>
                             </div>
-                            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                <div>
-                                    <label>Harga (Poin)</label>
-                                    <input type="number" name="price" value="${product?.price || ''}" required min="1">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                                <div class="form-group" style="margin:0;">
+                                    <label style="font-weight:600;">Harga (Poin)</label>
+                                    <div style="position:relative;">
+                                        <span style="position:absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1rem;">💎</span>
+                                        <input type="number" name="price" value="${product?.price || ''}" required min="1" style="padding-left: 2.8rem; border-radius: 10px; font-weight: 700;">
+                                    </div>
                                 </div>
-                                <div>
-                                    <label>Kuantitas Stok</label>
-                                    <input type="number" name="stock" value="${product?.stock || 0}" required min="0">
+                                <div class="form-group" style="margin:0;">
+                                    <label style="font-weight:600;">Stok Barang</label>
+                                    <input type="number" name="stock" value="${product?.stock || 0}" required min="0" style="border-radius: 10px;">
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label>URL Gambar Tampilan (Opsional)</label>
-                                <input type="text" name="image_url" value="${product?.image_url || ''}" placeholder="https://unsplash.com/...">
-                            </div>
-                            <div class="form-group">
-                                <label>Status Visibilitas</label>
-                                <select name="status">
-                                    <option value="active" ${product?.status === 'active' ? 'selected' : ''}>Aktif / Terdaftar</option>
-                                    <option value="inactive" ${product?.status === 'inactive' ? 'selected' : ''}>Tersembunyi</option>
+                                <label style="font-weight:600;">Status Katalog</label>
+                                <select name="status" style="border-radius: 10px;">
+                                    <option value="active" ${product?.status === 'active' ? 'selected' : ''}>✅ Aktif & Tersedia</option>
+                                    <option value="inactive" ${product?.status === 'inactive' ? 'selected' : ''}>🚫 Nonaktif (Draft)</option>
                                 </select>
                             </div>
-                            <div class="form-actions" style="margin-top: 2rem;">
-                                <button type="button" class="btn" onclick="closeModal()">Buang</button>
-                                <button type="submit" class="btn btn-primary">${id ? 'Simpan Perubahan' : 'Konfirmasi & Daftar'}</button>
+                            <div class="form-group">
+                                <label style="font-weight:600;">URL Gambar (Opsional)</label>
+                                <input type="text" name="image_url" value="${product?.image_url || ''}" placeholder="https://domain.com/image.jpg" style="border-radius: 10px;">
+                            </div>
+                            <div class="form-actions" style="margin-top: 2.5rem; display: flex; gap: 1rem;">
+                                <button type="button" class="btn" onclick="closeModal()" style="flex:1; background:#f1f5f9;">Batal</button>
+                                <button type="submit" class="btn btn-primary" style="flex:2; border-radius: 12px; font-weight: 700;">${id ? 'Simpan Perubahan' : 'Terbitkan Produk'}</button>
                             </div>
                         </form>
                     </div>
@@ -655,16 +678,22 @@ class AdminController {
         data.stock = parseInt(data.stock);
 
         try {
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.textContent = 'Menyimpan...';
+
             if (id) {
-                await API.updateProduct(id, data);
+                await API.request(`/admin/products/${id}`, 'PUT', data);
+                showToast("Produk berhasil diperbarui!");
             } else {
-                await API.createProduct(data);
+                await API.request('/admin/products', 'POST', data);
+                showToast("Produk berhasil ditambahkan ke katalog!");
             }
             closeModal();
             AdminController.renderProducts();
-            showToast(`Produk berhasil ${id ? 'diperbarui' : 'dibuat'}`);
         } catch (error) {
-            showToast(error.message, 'error');
+            showToast(error.message, "error");
+            e.target.querySelector('button[type="submit"]').disabled = false;
         }
     }
 
@@ -685,25 +714,44 @@ class AdminController {
     static async renderAuditLogs() {
         const content = document.getElementById('mainContent');
         content.innerHTML = `
-            <div class="table-wrapper">
-                <div class="table-header">
-                    <h3>Riwayat Audit Sistem</h3>
+            <div class="fade-in">
+                <div class="table-header" style="margin-bottom: 2rem;">
+                    <div>
+                        <h2 style="font-weight: 700; color: var(--text-main);">Log Audit Keamanan</h2>
+                        <p style="color: var(--text-muted);">Pantau aktivitas sensitif dan perubahan sistem secara real-time</p>
+                    </div>
+                    <div style="display:flex; gap:1rem; align-items:center;">
+                        <span id="liveStatus" style="font-size:0.75rem; font-weight:700; color:var(--success); display:flex; align-items:center; gap:0.5rem;">
+                            <span style="width:8px; height:8px; background:var(--success); border-radius:50%; animation: pulse 2s infinite;"></span> LIVE MONITORING
+                        </span>
+                        <button class="btn" style="background:white; border:1px solid var(--border);" onclick="AdminController.renderAuditLogs()">Segarkan 🔄</button>
+                    </div>
                 </div>
-                <div style="overflow-x: auto;">
-                    <table class="premium-table" id="auditTable">
-                        <thead>
-                            <tr>
-                                <th>Terjadi Pada</th>
-                                <th>Dilakukan Oleh</th>
-                                <th>Jenis Aksi</th>
-                                <th>Entitas Target</th>
-                                <th>Detail Aktivitas</th>
-                                <th>Info Asal</th>
-                            </tr>
-                        </thead>
-                        <tbody><tr><td colspan="6" class="text-center">Mengambil log...</td></tr></tbody>
-                    </table>
+
+                <div class="table-wrapper">
+                    <div style="overflow-x: auto;">
+                        <table class="premium-table" id="auditTable">
+                            <thead>
+                                <tr>
+                                    <th>Stempel Waktu</th>
+                                    <th>Aktor</th>
+                                    <th>Aksi</th>
+                                    <th>Objek Target</th>
+                                    <th>Rincian Aktivitas</th>
+                                    <th>Trace ID / IP</th>
+                                </tr>
+                            </thead>
+                            <tbody><tr><td colspan="6" class="text-center">Menghubungkan ke server audit...</td></tr></tbody>
+                        </table>
+                    </div>
                 </div>
+                <style>
+                    @keyframes pulse {
+                        0% { opacity: 1; transform: scale(1); }
+                        50% { opacity: 0.5; transform: scale(1.2); }
+                        100% { opacity: 1; transform: scale(1); }
+                    }
+                </style>
             </div>
         `;
 

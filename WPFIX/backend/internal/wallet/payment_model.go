@@ -3,12 +3,20 @@ package wallet
 import "time"
 
 type PaymentToken struct {
-	Token    string    `json:"token"`
-	Amount   int       `json:"amount"`
-	Merchant string    `json:"merchant"`
-	Expiry   time.Time `json:"expiry"`
-	WalletID uint      `json:"wallet_id"`
-	Type     string    `json:"type"` // "purchase" or "transfer"
+	ID           uint      `json:"id" gorm:"primaryKey"`
+	Token        string    `json:"token" gorm:"uniqueIndex;not null"`
+	QRCodeBase64 string    `json:"qr_code_base64" gorm:"type:text"` // For direct visual display
+	Amount       int       `json:"amount" gorm:"not null"`
+	Merchant     string    `json:"merchant" gorm:"size:100"`
+	Expiry       time.Time `json:"expiry" gorm:"not null"`
+	WalletID     uint      `json:"wallet_id" gorm:"not null"`
+	Status       string    `json:"status" gorm:"type:enum('active','consumed','expired');default:'active'"`
+	Type         string    `json:"type" gorm:"size:50"` // "purchase" or "transfer"
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+func (PaymentToken) TableName() string {
+	return "payment_tokens"
 }
 
 type PaymentTokenRequest struct {

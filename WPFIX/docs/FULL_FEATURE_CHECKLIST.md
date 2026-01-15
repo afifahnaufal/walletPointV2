@@ -50,7 +50,7 @@
 | Feature | Functionality | Backend | Frontend | Notes |
 | :--- | :--- | :---: | :---: | :--- |
 | **Audit Log** | Log all admin/user actions | ✅ | ❌ | Records logged in DB |
-| **Ext. Sync** | External Point Integration | ❌ | ❌ | Not yet implemented |
+| **Ext. Sync** | External Point Integration | ✅ | ✅ | Implemented sync from external sources |
 
 ## Legend
 - ✅ : **Done** (Implemented & Integrated)

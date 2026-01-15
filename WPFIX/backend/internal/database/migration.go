@@ -16,13 +16,16 @@ func Migrate(db *gorm.DB) {
 	log.Println("🔄 Running database migrations...")
 
 	// Manual Fix: Ensure enum types are updated (GORM AutoMigrate doesn't update existing enums)
+	db.Exec("ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'dosen', 'mahasiswa', 'merchant') NOT NULL")
 	db.Exec("ALTER TABLE missions MODIFY COLUMN type ENUM('quiz', 'task', 'assignment') NOT NULL")
 	db.Exec("ALTER TABLE mission_submissions MODIFY COLUMN status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending'")
+	db.Exec("ALTER TABLE wallet_transactions MODIFY COLUMN type ENUM('mission', 'task', 'transfer_in', 'transfer_out', 'marketplace', 'marketplace_sale', 'external', 'adjustment', 'topup') NOT NULL")
 
 	err := db.AutoMigrate(
 		&auth.User{},
 		&wallet.Wallet{},
 		&wallet.WalletTransaction{},
+		&wallet.PaymentToken{},
 		&transfer.Transfer{},
 		&marketplace.Product{},
 		&marketplace.MarketplaceTransaction{},

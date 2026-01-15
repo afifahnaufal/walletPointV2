@@ -121,7 +121,11 @@ class DosenController {
                     </td>
                     <td class="text-right">
                         <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
-                            <button class="btn-icon" style="background: #f1f5f9;" onclick="DosenController.showQuizModal(${q.id})" title="Edit Kuis">
+                            <button class="btn btn-sm" style="background: var(--primary); color: white; border-radius: 12px; font-size: 0.75rem; padding: 0.4rem 0.8rem;" 
+                                    onclick="DosenController.renderSubmissions('pending', ${q.id})" title="Lihat Pengiriman">
+                                📊 Hasil
+                            </button>
+                            <button class="btn-icon" style="background: #f1f5f9;" onclick="DosenController.showQuizModal(${q.id})" title="Sempurnakan Kuis">
                                 <span style="font-size: 0.9rem;">✏️</span>
                             </button>
                             <button class="btn-icon" style="background: rgba(239, 68, 68, 0.05); color: var(--error);" onclick="DosenController.deleteMission(${q.id})" title="Hapus Kuis">
@@ -470,6 +474,10 @@ class DosenController {
                     </td>
                     <td class="text-right">
                         <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                            <button class="btn btn-sm" style="background: var(--primary); color: white; border-radius: 12px; font-size: 0.75rem; padding: 0.4rem 0.8rem;" 
+                                    onclick="DosenController.renderSubmissions('pending', ${m.id})" title="Lihat Pengiriman">
+                                📊 Pengiriman
+                            </button>
                             <button class="btn-icon" style="background: #f1f5f9;" onclick="DosenController.showMissionModal(${m.id})" title="Sempurnakan Tugas">
                                 <span style="font-size: 0.9rem;">✏️</span>
                             </button>
@@ -605,7 +613,7 @@ class DosenController {
     // ==========================
     // MODULE: SUBMISSIONS
     // ==========================
-    static async renderSubmissions(statusFilter = 'pending') {
+    static async renderSubmissions(statusFilter = 'pending', missionId = null) {
         const content = document.getElementById('mainContent');
         content.innerHTML = `
             <div class="fade-in">
@@ -616,12 +624,12 @@ class DosenController {
 
                 <div class="tabs" style="margin-bottom: 1.5rem; display:flex; gap: 1rem; border-bottom: 2px solid var(--border);">
                     <button class="tab-btn ${statusFilter === 'pending' ? 'active' : ''}" 
-                            onclick="DosenController.renderSubmissions('pending')"
+                            onclick="DosenController.renderSubmissions('pending', ${missionId})"
                             style="padding: 0.8rem 1.5rem; background:none; border:none; border-bottom: 3px solid ${statusFilter === 'pending' ? 'var(--primary)' : 'transparent'}; font-weight: 600; color: ${statusFilter === 'pending' ? 'var(--primary)' : 'var(--text-muted)'}; cursor: pointer;">
                         ⏳ Menunggu Peninjauan
                     </button>
                     <button class="tab-btn ${statusFilter !== 'pending' ? 'active' : ''}" 
-                            onclick="DosenController.renderSubmissions('approved')"
+                            onclick="DosenController.renderSubmissions('approved', ${missionId})"
                             style="padding: 0.8rem 1.5rem; background:none; border:none; border-bottom: 3px solid ${statusFilter !== 'pending' ? 'var(--primary)' : 'transparent'}; font-weight: 600; color: ${statusFilter !== 'pending' ? 'var(--primary)' : 'var(--text-muted)'}; cursor: pointer;">
                         ✅ Riwayat / Ditinjau
                     </button>
@@ -660,6 +668,10 @@ class DosenController {
 
             const result = await API.getDosenSubmissions({ status: queryStatus, limit: 100 });
             let submissions = result.data.submissions || [];
+
+            if (missionId) {
+                submissions = submissions.filter(s => s.mission_id === missionId);
+            }
 
             // If tab is history, we might want to merge approved & rejected if backend doesn't support generic 'completed' status
             // Assuming for now simple filter.

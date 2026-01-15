@@ -150,3 +150,9 @@ type SubmissionListResponse struct {
 	Limit       int                     `json:"limit"`
 	TotalPages  int                     `json:"total_pages"`
 }
+
+type DosenStatsResponse struct {
+	TotalMissions  int64 `json:"total_missions"`
+	PendingReviews int64 `json:"pending_reviews"`
+	ValidatedTasks int64 `json:"validated_tasks"`
+}

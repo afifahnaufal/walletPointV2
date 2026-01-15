@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"math"
 	"net/http"
 	"strconv"
 	"wallet-point/internal/audit"
@@ -180,10 +181,20 @@ func (h *WalletHandler) GetAllTransactions(c *gin.Context) {
 		Limit:     limit,
 	}
 
-	response, err := h.service.GetAllTransactions(params)
+	transactions, total, err := h.service.GetAllTransactions(params)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to retrieve transactions", err.Error())
 		return
+	}
+
+	totalPages := int(math.Ceil(float64(total) / float64(limit)))
+
+	response := TransactionListResponse{
+		Transactions: transactions,
+		Total:        total,
+		Page:         page,
+		Limit:        limit,
+		TotalPages:   totalPages,
 	}
 
 	utils.SuccessResponse(c, http.StatusOK, "Transactions retrieved successfully", response)
@@ -313,11 +324,83 @@ func (h *WalletHandler) GeneratePaymentToken(c *gin.Context) {
 		return
 	}
 
-	token, err := h.service.GeneratePaymentToken(userID, req.Amount, req.Merchant, req.Type)
+	token, err := h.service.GeneratePaymentToken(req, userID)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
 	utils.SuccessResponse(c, http.StatusOK, "Payment token generated successfully", token)
+}
+
+// GetMyQRCode handles getting current user's identification QR
+// @Summary Get my ID QR
+// @Description Get current authenticated user's ID as a QR image
+// @Tags Wallet
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} utils.Response
+// @Router /mahasiswa/qr/me [get]
+func (h *WalletHandler) GetMyQRCode(c *gin.Context) {
+	userID := c.GetUint("user_id")
+
+	qrBase64, err := h.service.GetMyQRCode(userID)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to generate QR", err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "QR retrieved", gin.H{
+		"qr_base64": qrBase64,
+	})
+}
+
+// CheckTokenStatus handles checking if a token is still valid/active
+func (h *WalletHandler) CheckTokenStatus(c *gin.Context) {
+	tokenCode := c.Param("token")
+
+	isActive, err := h.service.CheckTokenStatus(tokenCode)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Error checking token status", err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Token status checked", map[string]bool{
+		"is_active": isActive,
+	})
+}
+
+// MerchantScan handles merchant scanning a student's payment QR
+func (h *WalletHandler) MerchantScan(c *gin.Context) {
+	merchantID := c.GetUint("user_id")
+
+	var req struct {
+		Token string `json:"token" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ValidationErrorResponse(c, err.Error())
+		return
+	}
+
+	_, err := h.service.MerchantConsumeToken(req.Token, merchantID)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Payment processed successfully", nil)
+}
+
+// GetMerchantStats handles retrieving merchant-specific dashboard statistics
+func (h *WalletHandler) GetMerchantStats(c *gin.Context) {
+	merchantID := c.GetUint("user_id")
+
+	stats, err := h.service.GetMerchantStats(merchantID)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Error fetching merchant stats", err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "Merchant stats retrieved", stats)
 }
