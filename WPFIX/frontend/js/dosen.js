@@ -5,22 +5,16 @@ class DosenController {
 
     static async loadDosenStats() {
         try {
-            const missions = await API.getDosenMissions();
-            const submissions = await API.getDosenSubmissions();
+            const res = await API.request('/dosen/stats', 'GET');
+            const stats = res.data;
 
             const mElem = document.getElementById('stats-missions');
             const pElem = document.getElementById('stats-pending');
             const vElem = document.getElementById('stats-validated');
 
-            if (mElem) mElem.textContent = missions.data.total || 0;
-            if (pElem) {
-                const pending = (submissions.data.submissions || []).filter(s => s.status === 'pending').length;
-                pElem.textContent = pending;
-            }
-            if (vElem) {
-                const approved = (submissions.data.submissions || []).filter(s => s.status === 'approved').length;
-                vElem.textContent = approved;
-            }
+            if (mElem) mElem.textContent = stats.total_missions || 0;
+            if (pElem) pElem.textContent = stats.pending_reviews || 0;
+            if (vElem) vElem.textContent = stats.validated_tasks || 0;
         } catch (e) {
             console.error("Failed to load dosen stats", e);
         }

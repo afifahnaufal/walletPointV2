@@ -333,28 +333,6 @@ func (h *WalletHandler) GeneratePaymentToken(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "Payment token generated successfully", token)
 }
 
-// GetMyQRCode handles getting current user's identification QR
-// @Summary Get my ID QR
-// @Description Get current authenticated user's ID as a QR image
-// @Tags Wallet
-// @Security BearerAuth
-// @Produce json
-// @Success 200 {object} utils.Response
-// @Router /mahasiswa/qr/me [get]
-func (h *WalletHandler) GetMyQRCode(c *gin.Context) {
-	userID := c.GetUint("user_id")
-
-	qrBase64, err := h.service.GetMyQRCode(userID)
-	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to generate QR", err.Error())
-		return
-	}
-
-	utils.SuccessResponse(c, http.StatusOK, "QR retrieved", gin.H{
-		"qr_base64": qrBase64,
-	})
-}
-
 // CheckTokenStatus handles checking if a token is still valid/active
 func (h *WalletHandler) CheckTokenStatus(c *gin.Context) {
 	tokenCode := c.Param("token")

@@ -144,6 +144,7 @@ type MissionListResponse struct {
 type SubmissionListParams struct {
 	MissionID uint
 	StudentID uint
+	CreatorID uint // Filter submissions for missions created by this user
 	Status    string
 	Page      int
 	Limit     int

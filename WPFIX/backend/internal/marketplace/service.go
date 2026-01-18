@@ -148,7 +148,6 @@ func (s *MarketplaceService) PurchaseProduct(userID uint, req *PurchaseRequest) 
 		return nil, err
 	}
 
-	// Allow anything except explicitly 'inactive'
 	if product.Status == "inactive" {
 		err = errors.New("product is not active")
 		return nil, err
@@ -159,22 +158,28 @@ func (s *MarketplaceService) PurchaseProduct(userID uint, req *PurchaseRequest) 
 		return nil, err
 	}
 
-	// 2. Validate QR if needed
-	if req.PaymentMethod == "qr" {
-		if req.PaymentToken == "" {
-			err = errors.New("QR payment requires a token")
-			return nil, err
-		}
+	// 2. Validate QR if needed (Legacy / External QR Token)
+	if req.PaymentMethod == "qr" && req.PaymentToken != "" {
 		if err = s.walletService.ValidateAndConsumeToken(req.PaymentToken, userID, product.Price); err != nil {
 			return nil, err
 		}
 	}
 
-	// 3. Get User Wallet
-	var userWallet *wallet.Wallet
-	userWallet, err = s.walletService.GetWalletByUserID(userID)
+	// 3. Get Wallets
+	var studentWallet *wallet.Wallet
+	studentWallet, err = s.walletService.GetWalletByUserID(userID)
 	if err != nil {
 		return nil, err
+	}
+
+	var creatorWallet *wallet.Wallet
+	creatorWallet, err = s.walletService.GetWalletByUserID(product.CreatedBy)
+	if err != nil {
+		// Fallback to a system admin if creator wallet not found
+		err = s.db.Table("users").Where("role = ?", "admin").Select("id").First(&product.CreatedBy).Error
+		if err == nil {
+			creatorWallet, _ = s.walletService.GetWalletByUserID(product.CreatedBy)
+		}
 	}
 
 	// Default quantity to 1 if not provided
@@ -184,36 +189,48 @@ func (s *MarketplaceService) PurchaseProduct(userID uint, req *PurchaseRequest) 
 	}
 
 	totalPrice := product.Price * quantity
-	if totalPrice <= 0 {
-		totalPrice = 1 // Force at least 1 point to avoid DB constraint
+
+	// 4. Check Balance (Only if not already paid via external QR token)
+	if req.PaymentToken == "" {
+		if studentWallet.Balance < totalPrice {
+			err = fmt.Errorf("insufficient balance. Required: %d", totalPrice)
+			return nil, err
+		}
+
+		// 5. Debit Student Wallet
+		err = s.walletService.DebitWithTransaction(tx, studentWallet.ID, totalPrice, "marketplace", fmt.Sprintf("Buy %dx %s", quantity, product.Name))
+		if err != nil {
+			return nil, err
+		}
+
+		// 6. Credit Creator Wallet (Admin/Merchant)
+		if creatorWallet != nil {
+			err = s.walletService.CreditWithTransaction(tx, creatorWallet.ID, totalPrice, "marketplace_sale", fmt.Sprintf("Sale %dx %s to %s", quantity, product.Name, req.StudentName))
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
-	// 4. Check Balance
-	if userWallet.Balance < totalPrice {
-		err = fmt.Errorf("insufficient balance. Required: %d", totalPrice)
-		return nil, err
-	}
-
-	// 5. Debit Wallet
-	err = s.walletService.DebitWithTransaction(tx, userWallet.ID, totalPrice, "marketplace", fmt.Sprintf("Purchase %d x %s", quantity, product.Name))
-	if err != nil {
-		return nil, err
-	}
-
-	// 6. Reduce Stock
+	// 7. Reduce Stock
 	err = s.repo.UpdateStock(tx, product.ID, -quantity)
 	if err != nil {
 		return nil, err
 	}
 
-	// 7. Create Transaction Record
+	// 8. Create Transaction Record with Student Data
 	txn := &MarketplaceTransaction{
-		WalletID:    userWallet.ID,
-		ProductID:   product.ID,
-		Amount:      product.Price,
-		TotalAmount: totalPrice,
-		Quantity:    quantity,
-		Status:      "success",
+		WalletID:      studentWallet.ID,
+		ProductID:     product.ID,
+		Amount:        product.Price,
+		TotalAmount:   totalPrice,
+		Quantity:      quantity,
+		StudentName:   req.StudentName,
+		StudentNPM:    req.StudentNPM,
+		StudentMajor:  req.StudentMajor,
+		StudentBatch:  req.StudentBatch,
+		PaymentMethod: req.PaymentMethod,
+		Status:        "success",
 	}
 
 	err = s.repo.CreateTransaction(tx, txn)

@@ -179,7 +179,6 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, allowedOrigins string, jwtExpiry in
 		mahasiswaGroup.GET("/wallet", walletHandler.GetMyWallet)
 		mahasiswaGroup.GET("/transactions", walletHandler.GetMyTransactions) // Replaces old getTransactions use case
 		mahasiswaGroup.POST("/payment/token", walletHandler.GeneratePaymentToken)
-		mahasiswaGroup.GET("/qr/me", walletHandler.GetMyQRCode)
 
 		// External Point Sync
 		mahasiswaGroup.POST("/external/sync", externalHandler.SyncPoints)

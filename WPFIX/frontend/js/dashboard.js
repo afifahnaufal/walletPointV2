@@ -83,6 +83,7 @@ function renderNavigation(role) {
     } else if (role === 'mahasiswa') {
         items.push(
             { label: 'Dashboard', href: '#dashboard', active: true },
+            { label: 'Pindai QR', href: '#scan' },
             { label: 'Misi', href: '#missions' },
             { label: 'MarketPlace', href: '#shop' },
             { label: 'Transfer Poin', href: '#transfer' },
@@ -184,6 +185,9 @@ function handleNavigation(target, role) {
             case 'transfer':
                 MahasiswaController.renderTransfer();
                 break;
+            case 'scan':
+                MahasiswaController.renderScanner();
+                break;
 
             case 'history':
                 MahasiswaController.renderLedger();
@@ -252,58 +256,133 @@ function renderDashboard(user) {
                 <div class="stat-card card-gradient-1">
                     <span class="stat-label">Misi Saya</span>
                     <div class="stat-value" id="stats-missions">--</div>
-                    <div class="stat-trend" style="color: var(--primary)">Total Dibuat</div>
+                    <div class="stat-trend" style="color:rgba(255,255,255,0.8); font-weight: 600;">📚 Total tugas dibuat</div>
                 </div>
                 <div class="stat-card card-gradient-2">
                     <span class="stat-label">Ulasan Tertunda</span>
-                    <div class="stat-value" id="stats-pending">--</div>
-                    <div class="stat-trend" style="color: var(--secondary)">Tindakan Diperlukan</div>
+                    <div class="stat-value" id="stats-pending" style="color: #fbbf24;">--</div>
+                    <div class="stat-trend" style="color:rgba(255,255,255,0.8); font-weight: 600;">⏳ Perlu segera diperiksa</div>
                 </div>
                 <div class="stat-card card-gradient-3">
                     <span class="stat-label">Tugas Divalidasi</span>
                     <div class="stat-value" id="stats-validated">--</div>
-                    <div class="stat-trend" style="color: var(--success)">Disetujui oleh Saya</div>
+                    <div class="stat-trend" style="color:rgba(255,255,255,0.8); font-weight: 600;">✅ Sudah diberikan poin</div>
                 </div>
             </div>
             
-            <div class="table-wrapper">
-                <div class="table-header">
-                    <h3>Dashboard Dosen</h3>
+            <div style="display: grid; grid-template-columns: 3fr 2fr; gap: 2rem; margin-top: 2rem;">
+                <div class="table-wrapper">
+                    <div class="table-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3>📥 Butuh Review Segera</h3>
+                        <button class="btn btn-sm" onclick="handleNavigation('submissions', 'dosen')" style="background: var(--primary-bg); color: var(--primary); font-weight: 600;">Lihat Semua</button>
+                    </div>
+                    <div style="padding: 1rem;">
+                        <div id="quickReviewList" style="display: flex; flex-direction: column; gap: 1rem;">
+                            <!-- Simple items or empty state -->
+                            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                                <span class="spinner"></span> Menarik pengiriman terbaru...
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
-                    <p>Selamat datang, Pak/Bu. Anda dapat mengelola misi Anda dan meninjau kiriman mahasiswa menggunakan bilah sisi.</p>
+
+                <div class="card fade-in" style="padding: 2rem; background: white; border: 1px solid var(--border); border-radius: 24px;">
+                    <h3 style="margin-bottom: 1.5rem;">📊 Analisis Kelas</h3>
+                    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                                <span style="font-weight: 600;">Tingkat Kelulusan</span>
+                                <span style="color: var(--success); font-weight: 700;">85%</span>
+                            </div>
+                            <div style="height: 10px; background: #f1f5f9; border-radius: 5px; overflow: hidden;">
+                                <div style="width: 85%; height: 100%; background: var(--success);"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                                <span style="font-weight: 600;">Keaktifan Kuis</span>
+                                <span style="color: var(--primary); font-weight: 700;">92%</span>
+                            </div>
+                            <div style="height: 10px; background: #f1f5f9; border-radius: 5px; overflow: hidden;">
+                                <div style="width: 92%; height: 100%; background: var(--primary);"></div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 12px; font-size: 0.85rem; color: var(--text-muted);">
+                            <strong>Insight:</strong> Mahasiswa paling aktif di hari Senin & Selasa. Waktu terbaik untuk merilis kuis baru!
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
         DosenController.loadDosenStats();
+        loadDosenQuickReview();
     } else if (user.role === 'mahasiswa') {
         content.innerHTML = `
             <div class="stats-grid">
                 <div class="stat-card card-gradient-1">
                     <span class="stat-label">Saldo Emerald</span>
                     <div class="stat-value" id="userBalance">--</div>
-                    <div class="stat-trend" style="color:var(--primary)">Tersedia untuk dibelanjakan</div>
+                    <div class="stat-trend" style="color:rgba(255,255,255,0.8)">💎 Poin dapat dibelanjakan</div>
                 </div>
                 <div class="stat-card card-gradient-2">
                     <span class="stat-label">Misi Selesai</span>
                     <div class="stat-value" id="stats-missions-done">--</div>
-                    <div class="stat-trend" style="color:var(--secondary)">Poin Diperoleh</div>
+                    <div class="stat-trend" style="color:rgba(255,255,255,0.8)">✅ Tugas tervalidasi</div>
                 </div>
                 <div class="stat-card card-gradient-3">
-                    <span class="stat-label">Pusat Penemuan</span>
+                    <span class="stat-label">Discovery Hub</span>
                     <div class="stat-value" id="stats-active-missions">--</div>
-                    <div class="stat-trend" style="color:var(--success)">Tugas Tersedia</div>
+                    <div class="stat-trend" style="color:rgba(255,255,255,0.8); font-weight: 600;">✨ Cari misi baru</div>
                 </div>
             </div>
 
-            <div class="card fade-in" style="margin-top: 2rem; padding: 2.5rem; text-align: center; background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.05)); border: 1px dashed var(--primary-light);">
-                <div style="font-size: 3rem; margin-bottom: 1rem;">👋</div>
-                <h2 style="font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem;">Selamat datang kembali, ${user.full_name || 'Mahasiswa'}!</h2>
-                <p style="color: var(--text-muted); max-width: 500px; margin: 0 auto;">Siap untuk menaiki papan peringkat? Pergilah ke Pusat Penemuan untuk menemukan misi baru dan dapatkan lebih banyak poin untuk hadiah.</p>
-                <button class="btn btn-primary" style="margin-top: 1.5rem; border-radius: 20px;" onclick="handleNavigation('missions', 'mahasiswa')">Jelajahi Misi</button>
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-top: 2rem;">
+                <div class="card fade-in" style="padding: 2.5rem; background: white; border: 1px solid var(--border); border-radius: 24px;">
+                    <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+                        🚀 Akses Cepat
+                    </h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <div class="quick-action-card" onclick="handleNavigation('missions', 'mahasiswa')" style="background: rgba(99, 102, 241, 0.05); padding: 1.5rem; border-radius: 20px; cursor: pointer; transition: 0.3s; border: 1px solid rgba(99, 102, 241, 0.1);">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">🎯</div>
+                            <h4 style="margin: 0; color: var(--primary);">Jelajahi Misi</h4>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0 0 0;">Cari tugas baru untuk peroleh poin</p>
+                        </div>
+                        <div class="quick-action-card" onclick="handleNavigation('shop', 'mahasiswa')" style="background: rgba(16, 185, 129, 0.05); padding: 1.5rem; border-radius: 20px; cursor: pointer; transition: 0.3s; border: 1px solid rgba(16, 185, 129, 0.1);">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">🛍️</div>
+                            <h4 style="margin: 0; color: #10b981;">MarketPlace</h4>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0 0 0;">Tukarkan poin dengan hadiah menarik</p>
+                        </div>
+                        <div class="quick-action-card" onclick="handleNavigation('transfer', 'mahasiswa')" style="background: rgba(245, 158, 11, 0.05); padding: 1.5rem; border-radius: 20px; cursor: pointer; transition: 0.3s; border: 1px solid rgba(245, 158, 11, 0.1);">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">💸</div>
+                            <h4 style="margin: 0; color: #f59e0b;">Transfer Poin</h4>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0 0 0;">Kirim poin ke rekan atau kelompok</p>
+                        </div>
+                        <div class="quick-action-card" onclick="handleNavigation('scan', 'mahasiswa')" style="background: rgba(99, 102, 241, 0.05); padding: 1.5rem; border-radius: 20px; cursor: pointer; transition: 0.3s; border: 1px solid rgba(99, 102, 241, 0.1);">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">📸</div>
+                            <h4 style="margin: 0; color: var(--primary);">Pindai QR</h4>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0 0 0;">Bayar produk atau transfer via scan</p>
+                        </div>
+                        <div class="quick-action-card" onclick="handleNavigation('history', 'mahasiswa')" style="background: rgba(107, 114, 128, 0.05); padding: 1.5rem; border-radius: 20px; cursor: pointer; transition: 0.3s; border: 1px solid rgba(107, 114, 128, 0.1);">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">📑</div>
+                            <h4 style="margin: 0; color: #4b5563;">Buku Kas</h4>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.5rem 0 0 0;">Pantau seluruh riwayat transaksi Anda</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card fade-in" style="padding: 2rem; background: #0f172a; color: white; border-radius: 24px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <h4 style="opacity: 0.8; margin-bottom: 1rem;">Tips Hari Ini 💡</h4>
+                        <p id="dailyTip" style="font-size: 0.95rem; line-height: 1.6;">Lakukan kuis setiap minggu untuk mempertahankan streak perolehan poin Anda!</p>
+                    </div>
+                    <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <button class="btn btn-primary" style="width: 100%; height: 50px; border-radius: 15px; background: linear-gradient(to right, #6366f1, #a855f7); border: none; font-weight: 700;" onclick="handleNavigation('missions', 'mahasiswa')">
+                            Mulai Misi Sekarang
+                        </button>
+                    </div>
+                </div>
             </div>
         `;
-        // Load student stats via API
         loadStudentStats();
     } else if (user.role === 'merchant') {
         content.innerHTML = `
@@ -338,13 +417,63 @@ function renderDashboard(user) {
 async function loadStudentStats() {
     try {
         const user = JSON.parse(localStorage.getItem('user'));
-        const wallet = await API.getWallet(user.id);
-        const missions = await API.getMissions();
-        const submissions = await API.getSubmissions({ status: 'approved' });
+        const [walletRes, missionsRes, subsRes] = await Promise.all([
+            API.getWallet(user.id),
+            API.getMissions(),
+            API.getSubmissions({ status: 'approved' })
+        ]);
 
-        document.getElementById('userBalance').textContent = wallet.data.balance.toLocaleString();
-        document.getElementById('stats-missions-done').textContent = (submissions.data.submissions || []).filter(s => s.student_id === user.id).length;
-        document.getElementById('stats-active-missions').textContent = (missions.data.missions || []).length;
+        if (document.getElementById('userBalance')) document.getElementById('userBalance').textContent = walletRes.data.balance.toLocaleString();
+        if (document.getElementById('stats-missions-done')) document.getElementById('stats-missions-done').textContent = (subsRes.data.submissions || []).filter(s => s.student_id === user.id).length;
+        if (document.getElementById('stats-active-missions')) document.getElementById('stats-active-missions').textContent = (missionsRes.data.missions || []).length;
+
+        // Random Tip
+        const tips = [
+            "Selesaikan misi harian untuk poin bonus rutin!",
+            "Cek MarketPlace secara berkala untuk promo terbatas.",
+            "Gunakan fitur transfer untuk berbagi poin dengan teman kelompok.",
+            "Misi Quiz memiliki tenggat waktu, jangan sampai terlewat!",
+            "Pantau Buku Kas untuk memastikan seluruh saldo Anda aman."
+        ];
+        const tipElem = document.getElementById('dailyTip');
+        if (tipElem) tipElem.textContent = tips[Math.floor(Math.random() * tips.length)];
+
+    } catch (e) { console.error(e); }
+}
+
+async function loadDosenQuickReview() {
+    try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        const res = await API.getDosenSubmissions({ status: 'pending', limit: 3, creator_id: user.id });
+        const submissions = res.data.submissions || [];
+        const container = document.getElementById('quickReviewList');
+        if (!container) return;
+
+        if (submissions.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: var(--text-muted); background: #f8fafc; border-radius: 16px;">
+                    <div>🎉</div>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 0.85rem;">Semua tugas telah diperiksa!</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = submissions.map(s => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem;">
+                        ${s.student_name ? s.student_name.charAt(0) : 'S'}
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-main);">${s.student_name}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">${s.mission_title}</div>
+                    </div>
+                </div>
+                <button class="btn btn-sm" onclick="handleNavigation('submissions', 'dosen')" style="padding: 0.3rem 0.6rem; font-size: 0.7rem;">Cek</button>
+            </div>
+        `).join('');
+
     } catch (e) { console.error(e); }
 }
 

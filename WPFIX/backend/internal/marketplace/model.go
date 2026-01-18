@@ -22,14 +22,19 @@ func (Product) TableName() string {
 }
 
 type MarketplaceTransaction struct {
-	ID          uint      `json:"id" gorm:"primaryKey"`
-	WalletID    uint      `json:"wallet_id" gorm:"not null;index"`
-	ProductID   uint      `json:"product_id" gorm:"not null;index"`
-	Amount      int       `json:"amount" gorm:"not null"`                           // Individual item price
-	TotalAmount int       `json:"total_amount" gorm:"column:total_amount;not null"` // This fixes the DB constraint error
-	Quantity    int       `json:"quantity" gorm:"default:1;not null"`
-	Status      string    `json:"status" gorm:"type:enum('success','failed');default:'success'"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID            uint      `json:"id" gorm:"primaryKey"`
+	WalletID      uint      `json:"wallet_id" gorm:"not null;index"`
+	ProductID     uint      `json:"product_id" gorm:"not null;index"`
+	Amount        int       `json:"amount" gorm:"not null"`                           // Individual item price
+	TotalAmount   int       `json:"total_amount" gorm:"column:total_amount;not null"` // This fixes the DB constraint error
+	Quantity      int       `json:"quantity" gorm:"default:1;not null"`
+	StudentName   string    `json:"student_name" gorm:"size:255"`
+	StudentNPM    string    `json:"student_npm" gorm:"size:100"`
+	StudentMajor  string    `json:"student_major" gorm:"size:255"`
+	StudentBatch  string    `json:"student_batch" gorm:"size:50"`
+	PaymentMethod string    `json:"payment_method" gorm:"size:50;default:'wallet'"`
+	Status        string    `json:"status" gorm:"type:enum('success','failed');default:'success'"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 type PurchaseRequest struct {
@@ -37,6 +42,10 @@ type PurchaseRequest struct {
 	Quantity      int    `json:"quantity" binding:"omitempty,gt=0"`
 	PaymentMethod string `json:"payment_method" binding:"omitempty,oneof=wallet qr"`
 	PaymentToken  string `json:"payment_token"`
+	StudentName   string `json:"student_name"`
+	StudentNPM    string `json:"student_npm"`
+	StudentMajor  string `json:"student_major"`
+	StudentBatch  string `json:"student_batch"`
 }
 
 func (MarketplaceTransaction) TableName() string {
@@ -44,17 +53,22 @@ func (MarketplaceTransaction) TableName() string {
 }
 
 type MarketplaceTransactionWithDetails struct {
-	ID          uint      `json:"id"`
-	WalletID    uint      `json:"wallet_id"`
-	ProductID   uint      `json:"product_id"`
-	Amount      int       `json:"amount"`
-	TotalAmount int       `json:"total_amount"`
-	Quantity    int       `json:"quantity"`
-	Status      string    `json:"status"`
-	CreatedAt   time.Time `json:"created_at"`
-	ProductName string    `json:"product_name"`
-	UserName    string    `json:"user_name"`
-	UserEmail   string    `json:"user_email"`
+	ID            uint      `json:"id"`
+	WalletID      uint      `json:"wallet_id"`
+	ProductID     uint      `json:"product_id"`
+	Amount        int       `json:"amount"`
+	TotalAmount   int       `json:"total_amount"`
+	Quantity      int       `json:"quantity"`
+	StudentName   string    `json:"student_name"`
+	StudentNPM    string    `json:"student_npm"`
+	StudentMajor  string    `json:"student_major"`
+	StudentBatch  string    `json:"student_batch"`
+	PaymentMethod string    `json:"payment_method"`
+	Status        string    `json:"status"`
+	CreatedAt     time.Time `json:"created_at"`
+	ProductName   string    `json:"product_name"`
+	UserName      string    `json:"user_name"`
+	UserEmail     string    `json:"user_email"`
 }
 
 type CreateProductRequest struct {

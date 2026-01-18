@@ -398,7 +398,7 @@ class AdminController {
             tbody.innerHTML = products.map(p => `
                 <tr>
                     <td>#${p.id}</td>
-                    <td><div class="table-img" style="background-image: url('${p.image_url || 'assets/placeholder.jpg'}')"></div></td>
+                    <td><div class="table-img" style="background: linear-gradient(135deg, var(--primary-light), var(--primary)); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; border-radius: 8px;">📦</div></td>
                     <td>
                         <div style="font-weight: 600;">${p.name}</div>
                         <small style="color: var(--text-muted);">${p.category || 'Umum'}</small>
@@ -610,7 +610,11 @@ class AdminController {
                                 <div class="form-group"><label>Harga</label><input type="number" name="price" value="${product?.price || ''}" required min="1"></div>
                                 <div class="form-group"><label>Stok</label><input type="number" name="stock" value="${product?.stock || 0}" required min="0"></div>
                             </div>
-                            <div class="form-group"><label>URL Gambar</label><input type="text" name="image_url" value="${product?.image_url || ''}"></div>
+                            <div class="form-group">
+                                <label>URL Gambar (Opsional)</label>
+                                <input type="text" name="image_url" value="${product?.image_url || ''}" placeholder="https://example.com/image.jpg">
+                                <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.5rem; display: block;">Kosongkan jika ingin menggunakan ikon default.</small>
+                            </div>
                             <div class="form-actions"><button type="button" class="btn" onclick="closeModal()">Batal</button><button type="submit" class="btn btn-primary">Simpan</button></div>
                         </form>
                     </div>

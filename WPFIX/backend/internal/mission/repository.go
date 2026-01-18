@@ -103,6 +103,9 @@ func (r *MissionRepository) FindAllSubmissions(params SubmissionListParams) ([]S
 	if params.StudentID > 0 {
 		query = query.Where("mission_submissions.student_id = ?", params.StudentID)
 	}
+	if params.CreatorID > 0 {
+		query = query.Where("missions.creator_id = ?", params.CreatorID)
+	}
 	if params.Status != "" {
 		query = query.Where("mission_submissions.status = ?", params.Status)
 	}

@@ -546,91 +546,13 @@ class MahasiswaController {
     }
 
     static async purchaseProduct(id, name, price) {
-        // 1. Initial Check
-        const modalHtml = `
-            <div class="modal-overlay" id="purchaseModal">
-                <div class="modal-card" style="max-width: 450px; text-align: center; padding: 2rem;">
-                    <div id="purchaseStep1">
-                        <div style="font-size: 4rem; margin-bottom: 1rem;">🛍️</div>
-                        <h3 style="margin-bottom: 0.5rem;">Pilih Metode Pembayaran</h3>
-                        <p style="color: var(--text-muted); margin-bottom: 2rem;">Tukarkan <b>${name}</b> seharga <b>${price.toLocaleString()} Poin</b>.</p>
-                        
-                        <div style="display: flex; gap: 1rem; flex-direction: column;">
-                            <button id="directPayBtn" class="btn btn-primary" onclick="MahasiswaController.confirmDirectPay(${id}, '${name}', ${price})" style="padding: 1rem; border-radius: 12px; font-weight: 700; background: #10b981; border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
-                                Konfirmasi & Bayar 🪙
-                            </button>
-                            <button class="btn btn-secondary" onclick="document.getElementById('purchaseModal').remove()" style="padding: 1rem; border-radius: 12px; font-weight: 600;">
-                                Batal
-                            </button>
-                        </div>
-                    </div>
-                    <div id="purchaseStep3" style="display: none;">
-                        <div class="success-icon-large">✅</div>
-                        <h3 style="color: var(--success);">Pembayaran Berhasil!</h3>
-                        <div class="receipt-box">
-                            <div class="receipt-row">
-                                <span>BARANG:</span>
-                                <span class="receipt-value">${name}</span>
-                            </div>
-                            <div class="receipt-row">
-                                <span>JUMLAH:</span>
-                                <span class="receipt-value">-${price.toLocaleString()} PTS</span>
-                            </div>
-                            <div class="receipt-row">
-                                <span>STATUS:</span>
-                                <span style="color: var(--success); font-weight: 700;">SELESAI</span>
-                            </div>
-                            <div style="border-top: 1px dashed #cbd5e1; margin: 0.5rem 0; padding-top: 0.5rem; font-size: 0.75rem; text-align: center;">
-                                Terima kasih telah menggunakan WalletPoint!
-                            </div>
-                        </div>
-                        <button class="btn btn-primary" onclick="MahasiswaController.closePurchaseAndReload()" style="width: 100%; padding: 1rem; border-radius: 12px;">
-                            Lihat Inventaris
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        this.showCheckoutForm({ id, name, price });
     }
-
-    static confirmDirectPay(id, name, price) {
-        if (confirm(`Apakah Anda yakin ingin membeli ${name} seharga ${price.toLocaleString()} Poin secara langsung?`)) {
-            MahasiswaController.payWithWalletDirect(id, name, price);
-        }
-    }
-
-
-    static async payWithWalletDirect(id, name, price) {
-        try {
-            const btn = document.getElementById('directPayBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> Memproses...';
-
-            await API.purchaseProduct({
-                product_id: parseInt(id),
-                payment_method: 'wallet'
-            });
-
-            document.getElementById('purchaseStep1').style.display = 'none';
-            document.getElementById('purchaseStep3').style.display = 'block';
-            showToast(`Pembelian berhasil!`, "success");
-        } catch (e) {
-            showToast(e.message, "error");
-            const btn = document.getElementById('directPayBtn');
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = 'Bayar Langsung Dompet 🪙';
-            }
-        }
-    }
-
-    static pollingInterval = null;
 
     static closePurchaseAndReload() {
-        const modal = document.getElementById('purchaseModal');
+        const modal = document.getElementById('checkoutModal');
         if (modal) modal.remove();
-        this.renderShop('catalog'); // Back to catalog
+        this.renderShop('catalog');
         loadStudentStats();
     }
 
@@ -725,6 +647,7 @@ class MahasiswaController {
                 </div>
 
                 <!-- VIEW 1: MENU (Buttons + History) -->
+                <div id="transferMenu">
                     <div style="display: flex; justify-content: center; margin-bottom: 2rem;">
                         <button class="btn btn-primary" style="padding: 1.5rem 3rem; border-radius: 50px; font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 0.75rem; box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4);" onclick="MahasiswaController.showTransferForm()">
                             <span>💸</span> Kirim Poin Baru
@@ -1016,5 +939,282 @@ class MahasiswaController {
             console.error(e);
             if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="text-center">Gagal memuat riwayat</td></tr>';
         }
+    }
+
+    // ==========================
+    // MODULE: QR SCANNER & SMART FLOW
+    // ==========================
+    static renderScanner() {
+        const content = document.getElementById('mainContent');
+        content.innerHTML = `
+            <div class="fade-in">
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <h2 style="font-weight: 800; color: var(--text-main);">📸 Pindai QR</h2>
+                    <p style="color: var(--text-muted);">Arahkan kamera ke QR Wallet atau QR Produk</p>
+                </div>
+
+                <div class="card" style="max-width: 500px; margin: 0 auto; padding: 1.5rem; border-radius: 24px; position: relative; overflow: hidden; border: 2px solid var(--primary-light);">
+                    <div id="qr-reader" style="width: 100%; border-radius: 16px; overflow: hidden; background: #000;"></div>
+                    <div id="qr-feedback" style="margin-top: 1rem; text-align: center; color: var(--text-muted); font-weight: 600;">Sedang mengaktifkan kamera...</div>
+                </div>
+
+                <div style="display: flex; justify-content: center; gap: 1rem; margin-top: 2rem;">
+                    <button class="btn btn-primary" onclick="MahasiswaController.showMyQR()" style="background: white; color: var(--primary); border: 2px solid var(--primary); padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 700;">
+                        Tampilkan QR Saya 🆔
+                    </button>
+                </div>
+            </div>
+        `;
+
+        this.startScanner();
+    }
+
+    static startScanner() {
+        const html5QrCode = new Html5Qrcode("qr-reader");
+        const feedback = document.getElementById('qr-feedback');
+
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+        html5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            (decodedText) => {
+                html5QrCode.stop().then(() => {
+                    this.handleScanResult(decodedText);
+                });
+            },
+            (errorMessage) => {
+                // ignore errors during scanning
+            }
+        ).catch(err => {
+            feedback.innerHTML = `<span style="color: var(--error);">Gagal mengakses kamera: ${err}</span>`;
+        });
+    }
+
+    static handleScanResult(text) {
+        console.log("QR Scanned:", text);
+
+        if (text.startsWith("WPUSER:")) {
+            const userId = text.split(":")[1];
+            showToast("Pengguna ditemukan! Membuka form transfer...", "success");
+            setTimeout(() => {
+                handleNavigation('transfer', 'mahasiswa');
+                setTimeout(() => this.showTransferForm(userId), 500);
+            }, 500);
+        } else if (text.startsWith("WPPROD:")) {
+            const prodId = text.split(":")[1];
+            showToast("Produk ditemukan! Menyiapkan checkout...", "success");
+            this.triggerPurchaseFromQR(prodId);
+        } else {
+            showToast("Format QR tidak dikenali", "warning");
+            this.renderScanner(); // Restart
+        }
+    }
+
+    static async triggerPurchaseFromQR(prodId) {
+        try {
+            const res = await API.request(`/admin/products/${prodId}`, 'GET');
+            const p = res.data;
+            this.showCheckoutForm(p);
+        } catch (e) {
+            showToast("Gagal memuat detail produk", "error");
+            this.renderScanner();
+        }
+    }
+
+    static showMyQR() {
+        const user = JSON.parse(localStorage.getItem('user'));
+        const modalHtml = `
+            <div class="modal-overlay" onclick="closeModal(event)">
+                <div class="modal-card" style="max-width: 400px; text-align: center; padding: 2.5rem;">
+                    <h3 style="margin-bottom: 0.5rem;">ID Wallet Saya</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 2rem;">Tunjukkan kode ini untuk menerima transfer</p>
+                    <div id="my-qr-container" style="display: flex; justify-content: center; margin-bottom: 2rem; background: white; padding: 1rem; border-radius: 16px; border: 1px solid var(--border);"></div>
+                    <div style="font-weight: 800; font-size: 1.2rem; color: var(--primary); background: #f1f5f9; padding: 0.5rem; border-radius: 8px;">${user.nim_nip || user.id}</div>
+                    <button class="btn btn-primary" onclick="closeModal()" style="width: 100%; margin-top: 2rem;">Tutup</button>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Use QR Code Library or just QR text (Server-side generated preferred, but let's just make it simple)
+        const qrContent = `WPUSER:${user.id}`;
+        new QRCode(document.getElementById("my-qr-container"), {
+            text: qrContent,
+            width: 200,
+            height: 200
+        });
+    }
+
+    // Overriding purchaseProduct to lead to CheckoutForm
+    static async purchaseProduct(id, name, price) {
+        this.showCheckoutForm({ id, name, price });
+    }
+
+    static showCheckoutForm(product) {
+        const user = JSON.parse(localStorage.getItem('user'));
+        const modalHtml = `
+            <div class="modal-overlay" id="checkoutModal">
+                <div class="modal-card" style="max-width: 500px;">
+                    <div class="modal-head">
+                        <h3>📋 Konfirmasi Pesanan</h3>
+                        <button class="btn-icon" onclick="document.getElementById('checkoutModal').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="background: var(--bg-main); padding: 1.5rem; border-radius: 16px; margin-bottom: 2rem; border: 1px dashed var(--border);">
+                            <div style="display:flex; justify-content:space-between; margin-bottom: 0.5rem;">
+                                <span style="color: var(--text-muted);">Produk:</span>
+                                <strong style="color: var(--text-main);">${product.name}</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between;">
+                                <span style="color: var(--text-muted);">Total Bayar:</span>
+                                <strong style="color: var(--primary); font-size: 1.1rem;">💎 ${product.price.toLocaleString()} Poin</strong>
+                            </div>
+                        </div>
+
+                        <form id="checkoutForm" onsubmit="MahasiswaController.handleCheckout(event, ${product.id}, '${product.name}', ${product.price})">
+                            <div class="form-group">
+                                <label style="font-weight: 600;">Nama Lengkap</label>
+                                <input type="text" name="student_name" value="${user.full_name || ''}" required placeholder="e.g. Ahmad Sujadi">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: 600;">NPM / NIM</label>
+                                <input type="text" name="student_npm" value="${user.nim_nip || ''}" required placeholder="e.g. 210123456">
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label style="font-weight: 600;">Jurusan</label>
+                                    <input type="text" name="student_major" required placeholder="Informatika">
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 600;">Angkatan</label>
+                                    <input type="text" name="student_batch" required placeholder="2021">
+                                </div>
+                            </div>
+
+                            <div style="margin: 2rem 0; padding: 1.5rem; background: #fffbeb; border-radius: 16px; border: 1px solid #fef3c7;">
+                                <label style="font-weight: 700; margin-bottom: 1rem; display: block;">Metode Pembayaran</label>
+                                <div style="display: grid; gap: 1rem;">
+                                    <label style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 2px solid var(--primary); border-radius: 12px; cursor: pointer; background: #eff6ff;">
+                                        <input type="radio" name="payment_method" value="wallet" checked style="width: 20px; height: 20px;">
+                                        <div>
+                                            <div style="font-weight: 700; color: var(--primary);">Saldo Wallet 🪙</div>
+                                            <div style="font-size: 0.8rem; opacity: 0.7;">Bayar otomatis menggunakan poin Anda</div>
+                                        </div>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: 12px; cursor: pointer;">
+                                        <input type="radio" name="payment_method" value="qr" style="width: 20px; height: 20px;">
+                                        <div>
+                                            <div style="font-weight: 600;">Kode QR 📸</div>
+                                            <div style="font-size: 0.8rem; opacity: 0.7;">Hasilkan kode QR untuk pembayaran fisik</div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1.25rem; border-radius: 16px; font-weight: 800; font-size: 1.1rem; box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4);">
+                                Konfirmasi Pesanan 🚀
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    static async handleCheckout(e, prodId, prodName, price) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = Object.fromEntries(new FormData(form).entries());
+
+        if (formData.payment_method === 'qr') {
+            document.getElementById('checkoutModal').remove();
+            this.generateItemQR(prodId, prodName, price);
+            return;
+        }
+
+        // Wallet Payment
+        const btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Memproses...';
+
+        try {
+            const res = await API.purchaseProduct({
+                product_id: prodId,
+                quantity: 1,
+                payment_method: 'wallet',
+                student_name: formData.student_name,
+                student_npm: formData.student_npm,
+                student_major: formData.student_major,
+                student_batch: formData.student_batch
+            });
+
+            document.getElementById('checkoutModal').remove();
+            this.showSuccessNotification(prodName, price);
+        } catch (e) {
+            showToast("Pembayaran Gagal: " + e.message, "error");
+            btn.disabled = false;
+            btn.textContent = "Konfirmasi Pesanan 🚀";
+        }
+    }
+
+    static generateItemQR(id, name, price) {
+        const modalHtml = `
+            <div class="modal-overlay" id="qrItemModal">
+                <div class="modal-card" style="max-width: 450px; text-align: center; padding: 2.5rem;">
+                    <h3 style="margin-bottom: 0.5rem;">QR Pembayaran Produk</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Scan QR ini atau simpan untuk konfirmasi data</p>
+                    
+                    <div id="product-qr-display" style="display: flex; justify-content: center; margin-bottom: 2rem; background: white; padding: 1rem; border-radius: 16px; border: 2px solid var(--primary-light);"></div>
+                    
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid var(--border);">
+                        <div style="font-weight: 700; color: var(--text-main);">${name}</div>
+                        <div style="color: var(--primary); font-weight: 800; font-size: 1.2rem;">💎 ${price.toLocaleString()} Pts</div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <button class="btn btn-secondary" onclick="document.getElementById('qrItemModal').remove()" style="padding: 1rem; border-radius: 12px; font-weight: 600;">Batal</button>
+                        <button class="btn btn-primary" onclick="MahasiswaController.downloadQR('product-qr-display', '${name}')" style="padding: 1rem; border-radius: 12px; font-weight: 700;">Simpan QR 💾</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        const qrContent = `WPPROD:${id}`;
+        new QRCode(document.getElementById("product-qr-display"), {
+            text: qrContent,
+            width: 250,
+            height: 250
+        });
+    }
+
+    static downloadQR(elementId, filename) {
+        const canvas = document.querySelector(`#${elementId} canvas`);
+        const link = document.createElement('a');
+        link.download = `QR-${filename.replace(/\s+/g, '-')}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+        showToast("QR Berhasil Disimpan", "success");
+    }
+
+    static showSuccessNotification(name, price) {
+        const modalHtml = `
+            <div class="modal-overlay" onclick="closeModal(event)">
+                <div class="modal-card fade-in" style="max-width: 400px; text-align: center; padding: 3rem;">
+                    <div style="width: 80px; height: 80px; background: var(--success); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; margin: 0 auto 2rem; box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);">
+                        ✓
+                    </div>
+                    <h2 style="margin-bottom: 1rem;">Pembayaran Berhasil!</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 2rem;">Anda telah menukarkan <strong>${name}</strong> seharga <strong>${price.toLocaleString()} Poin</strong>.</p>
+                    <button class="btn btn-primary" onclick="MahasiswaController.renderShop('my_items'); closeModal();" style="width: 100%; border-radius: 12px; padding: 1rem; font-weight: 700;">
+                        Lihat Inventaris Saya
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        loadStudentStats();
     }
 }

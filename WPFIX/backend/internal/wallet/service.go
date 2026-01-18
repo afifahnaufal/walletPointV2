@@ -430,12 +430,3 @@ func (s *WalletService) GetAdminStats() (*AdminStats, error) {
 
 	return &stats, nil
 }
-
-func (s *WalletService) GetMyQRCode(userID uint) (string, error) {
-	qrPayload := fmt.Sprintf("WPUSER:%d", userID)
-	png, err := qrcode.Encode(qrPayload, qrcode.Medium, 256)
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(png), nil
-}

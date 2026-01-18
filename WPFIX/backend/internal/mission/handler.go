@@ -341,11 +341,13 @@ func (h *MissionHandler) GetAllSubmissions(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	missionID, _ := strconv.ParseUint(c.Query("mission_id"), 10, 32)
 	studentID, _ := strconv.ParseUint(c.Query("student_id"), 10, 32)
+	creatorID, _ := strconv.ParseUint(c.Query("creator_id"), 10, 32)
 
 	// Parse query params
 	params := SubmissionListParams{
 		MissionID: uint(missionID),
 		StudentID: uint(studentID),
+		CreatorID: uint(creatorID),
 		Status:    c.Query("status"),
 		Page:      page,
 		Limit:     limit,
