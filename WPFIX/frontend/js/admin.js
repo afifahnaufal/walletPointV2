@@ -7,83 +7,61 @@ class AdminController {
 
     static async renderDashboard() {
         const content = document.getElementById('mainContent');
-        const storedUser = JSON.parse(localStorage.getItem('user')) || {};
-        const userName = storedUser.full_name || 'Administrator';
-
-        // Greeting
-        const hour = new Date().getHours();
-        let greeting = 'Selamat Pagi';
-        if (hour >= 11 && hour < 15) greeting = 'Selamat Siang';
-        else if (hour >= 15 && hour < 18) greeting = 'Selamat Sore';
-        else if (hour >= 18) greeting = 'Selamat Malam';
-
-        const dashboardHeader = `
-            <div class="fade-in" style="margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between;">
-                <div>
-                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.2rem;">${greeting},</div>
-                    <h2 style="margin: 0; font-weight: 800; color: var(--text-main); font-size: 1.75rem;">${userName.split(' ')[0]}! 👋</h2>
-                </div>
-                <div style="width: 45px; height: 45px; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm); border: 1px solid var(--border); position: relative;">
-                    <span style="font-size: 1.2rem;">🔔</span>
-                    <div style="position: absolute; top: -2px; right: -2px; width: 10px; height: 10px; background: var(--error); border-radius: 50%; border: 2px solid white;"></div>
-                </div>
-            </div>
-        `;
-
-        content.innerHTML = dashboardHeader + `
+        content.innerHTML = `
             <div class="fade-in">
                 <div class="stats-grid">
-                    <div class="stat-card card-gradient-1">
-                        <span class="stat-label">TOTAL PENGGUNA</span>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #6366f1, #818cf8); color: white;">
+                        <span class="stat-label" style="color: rgba(255,255,255,0.8)">TOTAL PENGGUNA</span>
                         <div class="stat-value" id="stats-users">--</div>
-                        <div class="stat-trend" id="stats-active-users" style="color: var(--primary); font-weight: 600;">-- Aktif</div>
+                        <div class="stat-trend" id="stats-active-users" style="color: rgba(255,255,255,0.7); font-size: 0.8rem;">-- Aktif</div>
                     </div>
-                    <div class="stat-card card-gradient-3">
-                        <span class="stat-label">POIN BEREDAR</span>
-                        <div class="stat-value" id="stats-circulation" style="color: var(--success);">--</div>
-                        <div class="stat-trend" style="color: var(--success); font-weight: 600;">💎 Emerald Total</div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #10b981, #34d399); color: white;">
+                        <span class="stat-label" style="color: rgba(255,255,255,0.8)">POIN BEREDAR</span>
+                        <div class="stat-value" id="stats-circulation">--</div>
+                        <div class="stat-trend" style="color: rgba(255,255,255,0.7); font-size: 0.8rem;">💎 Emerald Total</div>
                     </div>
-                    <div class="stat-card card-gradient-2">
-                        <span class="stat-label">AKTIVITAS HARI INI</span>
-                        <div class="stat-value" id="stats-today-txns" style="color: var(--secondary);">--</div>
-                        <div class="stat-trend" style="color: var(--secondary); font-weight: 600;">Transaksi Berhasil</div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b, #fbbf24); color: white;">
+                        <span class="stat-label" style="color: rgba(255,255,255,0.8)">AKTIVITAS HARI INI</span>
+                        <div class="stat-value" id="stats-today-txns">--</div>
+                        <div class="stat-trend" style="color: rgba(255,255,255,0.7); font-size: 0.8rem;">Transaksi Berhasil</div>
                     </div>
                 </div>
 
-                <div class="dashboard-grid-split">
-                    <div class="card fade-in" style="padding: 2.5rem; background: white; border: 1px solid var(--border); border-radius: 24px; box-shadow: var(--shadow-sm); border-top: 6px solid var(--primary);">
-                        <h4 style="margin-bottom: 2rem; display: flex; align-items: center; gap: 0.75rem; font-weight: 800; font-size: 1.25rem;">
+                <div style="margin-top: 2.5rem;">
+                    <div class="card" style="padding: 2rem;">
+                        <h4 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
                             📊 Aliran Poin Hari Ini (Real-time)
                         </h4>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
                             <div style="padding: 2.5rem; background: rgba(16, 185, 129, 0.05); border-radius: 20px; border: 1px dashed var(--success); text-align: center;">
-                                <small style="color: var(--success); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Total Kredit (+)</small>
-                                <div id="stats-today-credits" style="font-size: 3rem; font-weight: 900; color: var(--success); margin-top: 0.5rem;">--</div>
+                                <small style="color: var(--success); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Total Kredit (+)</small>
+                                <div id="stats-today-credits" style="font-size: 3rem; font-weight: 800; color: var(--success); margin-top: 0.5rem;">--</div>
                             </div>
                             <div style="padding: 2.5rem; background: rgba(239, 68, 68, 0.05); border-radius: 20px; border: 1px dashed var(--error); text-align: center;">
-                                <small style="color: var(--error); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Total Debit (-)</small>
-                                <div id="stats-today-debits" style="font-size: 3rem; font-weight: 900; color: var(--error); margin-top: 0.5rem;">--</div>
+                                <small style="color: var(--error); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Total Debit (-)</small>
+                                <div id="stats-today-debits" style="font-size: 3rem; font-weight: 800; color: var(--error); margin-top: 0.5rem;">--</div>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="table-wrapper" style="margin: 0;">
-                        <div class="table-header">
-                            <h3 style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700;">⚡ Transaksi Terakhir</h3>
-                            <button class="btn btn-sm" onclick="handleNavigation('transactions', 'admin')" style="background:var(--primary-bg); color:var(--primary); font-weight: 700; border-radius: 20px; padding: 0.5rem 1rem;">Semua →</button>
-                        </div>
-                        <div style="overflow-x: auto;">
-                            <table class="premium-table" id="recentTxnTable">
-                                <thead>
-                                    <tr>
-                                        <th>Waktu</th>
-                                        <th>Pengguna</th>
-                                        <th>Jumlah</th>
-                                    </tr>
-                                </thead>
-                                <tbody><tr><td colspan="3" class="text-center">Memuat transaksi terbaru...</td></tr></tbody>
-                            </table>
-                        </div>
+                <div class="table-wrapper" style="margin-top: 2rem;">
+                    <div class="table-header">
+                        <h3 style="display: flex; align-items: center; gap: 0.5rem;">⚡ Transaksi Terakhir</h3>
+                        <button class="btn btn-sm" onclick="AdminController.renderUsers('transactions')" style="background:var(--primary-bg); color:var(--primary);">Lihat Semua →</button>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="premium-table" id="recentTxnTable">
+                            <thead>
+                                <tr>
+                                    <th>Waktu</th>
+                                    <th>Pengguna</th>
+                                    <th>Tipe</th>
+                                    <th>Jumlah</th>
+                                </tr>
+                            </thead>
+                            <tbody><tr><td colspan="4" class="text-center">Memuat transaksi terbaru...</td></tr></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -119,42 +97,31 @@ class AdminController {
     }
 
     static async loadRecentTransactions() {
-        const tbody = document.querySelector('#recentTxnTable tbody');
-        if (!tbody) return;
-
-        // Table Skeletons
-        tbody.innerHTML = Array(3).fill(0).map(() => `
-            <tr>
-                <td><div class="skeleton" style="width: 50px; height: 12px;"></div></td>
-                <td><div class="skeleton" style="width: 100px; height: 12px;"></div></td>
-                <td><div class="skeleton" style="width: 50px; height: 20px; border-radius: 12px;"></div></td>
-                <td><div class="skeleton" style="width: 40px; height: 12px;"></div></td>
-            </tr>
-        `).join('');
-
         try {
             const result = await API.getAllTransactions({ limit: 5 });
             const data = result.data || result || {};
             const txns = data.transactions || [];
+            const tbody = document.querySelector('#recentTxnTable tbody');
+
+            if (!tbody) return;
 
             if (txns.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 2.5rem; color: var(--text-muted); font-size: 0.9rem;">🍃 Sistem masih hening. Belum ada aktivitas transaksi terdeteksi.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">Belum ada transaksi sistem.</td></tr>';
                 return;
             }
 
             tbody.innerHTML = txns.map(t => `
-                <tr class="fade-in-item">
+                <tr>
                     <td><small>${new Date(t.created_at).toLocaleTimeString()}</small></td>
-                    <td><div style="font-weight: 700;">${t.user_name || 'System'}</div></td>
-                    <td><span class="badge" style="background:#f1f5f9; color:var(--text-muted); font-size:0.75rem; font-weight:700; text-transform: uppercase;">${t.type || 'N/A'}</span></td>
+                    <td><strong>${t.user_name || 'System'}</strong></td>
+                    <td><span class="badge" style="background:#f1f5f9; color:var(--text-muted); font-size:0.7rem; font-weight:600;">${(t.type || 'N/A').toUpperCase()}</span></td>
                     <td style="font-weight: 800; color: ${t.direction === 'credit' ? 'var(--success)' : 'var(--error)'}">
                         ${t.direction === 'credit' ? '↑' : '↓'} ${(t.amount || 0).toLocaleString()}
                     </td>
                 </tr>
             `).join('');
         } catch (e) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="color: var(--error); padding: 1.5rem;">Gagal sinkronisasi data transaksi.</td></tr>';
-            console.error("Recent txns error:", e);
+            console.error("Failed to load recent transactions", e);
         }
     }
 
@@ -165,33 +132,18 @@ class AdminController {
         const content = document.getElementById('mainContent');
         content.innerHTML = `
             <div class="fade-in">
-                <div class="tab-header" style="display: flex; gap: 0.75rem; margin-bottom: 2rem; overflow-x: auto; padding-bottom: 1rem; -webkit-overflow-scrolling: touch; scrollbar-width: none;">
-                    <button class="tab-btn ${activeTab === 'accounts' ? 'active' : ''}" onclick="AdminController.renderUsers('accounts')" style="white-space: nowrap;">Daftar Akun</button>
-                    <button class="tab-btn ${activeTab === 'wallets' ? 'active' : ''}" onclick="AdminController.renderUsers('wallets')" style="white-space: nowrap;">Manajemen Dompet</button>
-                    <button class="tab-btn ${activeTab === 'transactions' ? 'active' : ''}" onclick="AdminController.renderUsers('transactions')" style="white-space: nowrap;">Log Transaksi</button>
-                    <button class="tab-btn ${activeTab === 'transfers' ? 'active' : ''}" onclick="AdminController.renderUsers('transfers')" style="white-space: nowrap;">Riwayat P2P</button>
+                <div class="tab-header" style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                    <button class="tab-btn ${activeTab === 'accounts' ? 'active' : ''}" onclick="AdminController.renderUsers('accounts')">Daftar Akun</button>
+                    <button class="tab-btn ${activeTab === 'wallets' ? 'active' : ''}" onclick="AdminController.renderUsers('wallets')">Manajemen Dompet</button>
+                    <button class="tab-btn ${activeTab === 'transactions' ? 'active' : ''}" onclick="AdminController.renderUsers('transactions')">Log Transaksi</button>
+                    <button class="tab-btn ${activeTab === 'transfers' ? 'active' : ''}" onclick="AdminController.renderUsers('transfers')">Riwayat P2P</button>
                 </div>
                 <div id="tabContent"></div>
             </div>
             <style>
-                .tab-btn { 
-                    background: transparent; 
-                    border: 1px solid var(--border); 
-                    padding: 0.6rem 1.25rem; 
-                    font-weight: 700; 
-                    color: var(--text-muted); 
-                    cursor: pointer; 
-                    border-radius: 20px; 
-                    transition: all 0.2s; 
-                    font-size: 0.85rem;
-                }
-                .tab-btn.active { 
-                    background: var(--primary); 
-                    color: white; 
-                    border-color: var(--primary);
-                    box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
-                }
-                .tab-btn:hover:not(.active) { background: #f1f5f9; color: var(--text-main); }
+                .tab-btn { background: none; border: none; padding: 0.75rem 1.5rem; font-weight: 600; color: var(--text-muted); cursor: pointer; border-radius: 8px; transition: 0.3s; }
+                .tab-btn.active { background: var(--primary-bg); color: var(--primary); }
+                .tab-btn:hover:not(.active) { background: #f8fafc; color: var(--text-main); }
             </style>
         `;
 
@@ -204,10 +156,10 @@ class AdminController {
     static async renderUserAccounts() {
         const tabContent = document.getElementById('tabContent');
         tabContent.innerHTML = `
-            <div class="table-wrapper" style="border-top: 6px solid var(--primary);">
-                <div class="table-header" style="padding: 1.5rem 2rem; background: #f8fafc; border-bottom: 1px solid var(--border);">
-                    <h3 style="margin:0; font-weight: 800; font-size: 1.25rem;">👥 Manajemen Akun Pengguna</h3>
-                    <button class="btn btn-primary" onclick="AdminController.showAddUserModal()" style="border-radius: 20px; padding: 0.5rem 1.25rem; font-size: 0.85rem;">+ Tambah Akun</button>
+            <div class="table-wrapper">
+                <div class="table-header">
+                    <h3>Daftar Akun Pengguna</h3>
+                    <button class="btn btn-primary" onclick="AdminController.showAddUserModal()">+ Tambah Pengguna</button>
                 </div>
                 <div style="overflow-x: auto;">
                     <table class="premium-table" id="usersTable">
@@ -393,32 +345,12 @@ class AdminController {
         const content = document.getElementById('mainContent');
         content.innerHTML = `
             <div class="fade-in">
-                <div class="tab-header" style="display: flex; gap: 0.75rem; margin-bottom: 2rem; overflow-x: auto; padding-bottom: 1rem; -webkit-overflow-scrolling: touch; scrollbar-width: none;">
-                    <button class="tab-btn ${activeTab === 'catalog' ? 'active' : ''}" onclick="AdminController.renderProducts('catalog')" style="white-space: nowrap;">Katalog Produk</button>
-                    <button class="tab-btn ${activeTab === 'sales' ? 'active' : ''}" onclick="AdminController.renderProducts('sales')" style="white-space: nowrap;">Riwayat Penjualan</button>
+                <div class="tab-header" style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                    <button class="tab-btn ${activeTab === 'catalog' ? 'active' : ''}" onclick="AdminController.renderProducts('catalog')">Katalog Produk</button>
+                    <button class="tab-btn ${activeTab === 'sales' ? 'active' : ''}" onclick="AdminController.renderProducts('sales')">Riwayat Penjualan</button>
                 </div>
                 <div id="tabContent"></div>
             </div>
-            <style>
-                .tab-btn { 
-                    background: transparent; 
-                    border: 1px solid var(--border); 
-                    padding: 0.6rem 1.25rem; 
-                    font-weight: 700; 
-                    color: var(--text-muted); 
-                    cursor: pointer; 
-                    border-radius: 20px; 
-                    transition: all 0.2s; 
-                    font-size: 0.85rem;
-                }
-                .tab-btn.active { 
-                    background: var(--primary); 
-                    color: white; 
-                    border-color: var(--primary);
-                    box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
-                }
-                .tab-btn:hover:not(.active) { background: #f1f5f9; color: var(--text-main); }
-            </style>
         `;
 
         if (activeTab === 'catalog') await this.renderCatalog();
@@ -428,11 +360,13 @@ class AdminController {
     static async renderCatalog() {
         const tabContent = document.getElementById('tabContent');
         tabContent.innerHTML = `
-            <div class="table-wrapper" style="border-top: 6px solid var(--primary);">
-                <div class="table-header" style="padding: 1.5rem 2rem; background: #f8fafc; border-bottom: 1px solid var(--border);">
-                    <h3 style="margin:0; font-weight: 800; font-size: 1.25rem;">📦 Inventaris Produk</h3>
-                    <button class="btn btn-primary" onclick="AdminController.showProductModal()" style="border-radius: 20px; padding: 0.5rem 1.25rem; font-size: 0.85rem;">+ Tambah Produk</button>
+            <div class="table-header" style="margin-bottom: 2rem;">
+                <div>
+                    <h3>Manajemen Inventaris Produk</h3>
                 </div>
+                <button class="btn btn-primary" onclick="AdminController.showProductModal()">+ Tambah Produk</button>
+            </div>
+            <div class="table-wrapper">
                 <div style="overflow-x: auto;">
                     <table class="premium-table" id="productsTable">
                         <thead>
@@ -711,29 +645,20 @@ class AdminController {
     static showProductQR(id, name) {
         const modalHtml = `
             <div class="modal-overlay" onclick="closeModal(event)">
-                <div class="modal-card fade-in" style="max-width: 450px; text-align: center; padding: 2.5rem; border-radius: 32px; box-shadow: var(--shadow-premium);">
-                    <div style="margin-bottom: 2rem;">
-                        <h3 style="margin: 0; font-weight: 800; font-size: 1.5rem; color: var(--text-main);">QR Code Produk 🏷️</h3>
-                        <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 0.95rem;">Siap untuk dicetak dan digunakan di Marketplace.</p>
-                    </div>
+                <div class="modal-card" style="max-width: 400px; text-align: center; padding: 2.5rem; border-radius: 30px;">
+                    <h3 style="margin-bottom: 0.5rem;">QR Code Produk</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Cetak kode ini untuk ditempel pada produk fisik atau mading.</p>
                     
-                    <div style="display: flex; justify-content: center; margin-bottom: 2rem;">
-                        <div id="admin-product-qr" style="background: white; padding: 2rem; border-radius: 24px; border: 1px dashed var(--border); box-shadow: var(--shadow-sm); transition: transform 0.3s hover {transform: scale(1.02);}"></div>
-                    </div>
+                    <div id="admin-product-qr" style="display: flex; justify-content: center; margin-bottom: 2rem; background: white; padding: 1.5rem; border-radius: 20px; border: 2px solid #f1f5f9;"></div>
                     
-                    <div style="background: #f8fafc; padding: 1.25rem; border-radius: 20px; margin-bottom: 2.5rem; border: 1px solid var(--border);">
-                        <div style="font-weight: 800; color: var(--text-main); font-size: 1.1rem; margin-bottom: 0.25rem;">${name}</div>
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                             <span style="color: var(--text-muted); font-size: 0.85rem;">SKU:</span>
-                             <code style="color: var(--primary); font-weight: 900; background: rgba(99, 102, 241, 0.1); padding: 4px 10px; border-radius: 8px;">WPPROD:${id}</code>
-                        </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid var(--border);">
+                        <div style="font-weight: 700; color: var(--text-main);">${name}</div>
+                        <code style="color: var(--primary); font-weight: 800;">WPPROD:${id}</code>
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr; gap: 1rem;">
-                        <button class="btn btn-primary" onclick="window.print()" style="padding: 1.1rem; border-radius: 18px; font-weight: 800; font-size: 1rem; background: linear-gradient(135deg, var(--primary), #4f46e5); border: none; box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);">
-                            Cetak Tiket QR 🖨️
-                        </button>
-                        <button class="btn" onclick="closeModal()" style="padding: 1rem; border-radius: 18px; color: var(--text-muted); font-weight: 600;">Tutup</button>
+                        <button class="btn btn-primary" onclick="window.print()" style="padding: 1rem; border-radius: 15px; font-weight: 700;">Cetak Sekarang 🖨️</button>
+                        <button class="btn btn-secondary" onclick="closeModal()" style="padding: 1rem; border-radius: 15px;">Tutup</button>
                     </div>
                 </div>
             </div>

@@ -17,14 +17,14 @@ class MahasiswaController {
                     <p style="color: var(--text-muted);">Jelajahi misi dan kuis untuk mendapatkan Poin Berlian</p>
                 </div>
 
-                <div class="filter-tabs" style="display: flex; gap: 1rem; margin-bottom: 2rem; background: rgba(255,255,255,0.5); padding: 0.5rem; border-radius: 12px; width: 100%; overflow-x: auto; border: 1px solid var(--border); -webkit-overflow-scrolling: touch; scrollbar-width: none;">
+                <div class="filter-tabs" style="display: flex; gap: 1rem; margin-bottom: 2rem; background: rgba(255,255,255,0.5); padding: 0.5rem; border-radius: 12px; width: fit-content; border: 1px solid var(--border);">
                     <button class="tab-btn active" onclick="MahasiswaController.filterMissions('all', this)" style="padding: 0.5rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: white; box-shadow: var(--shadow-sm);">Semua Item</button>
                     <button class="tab-btn" onclick="MahasiswaController.filterMissions('quiz', this)" style="padding: 0.5rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: transparent;">Kuis</button>
                     <button class="tab-btn" onclick="MahasiswaController.filterMissions('task', this)" style="padding: 0.5rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: transparent;">Tugas</button>
                     <button class="tab-btn" onclick="MahasiswaController.filterMissions('history', this)" style="padding: 0.5rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: transparent;">Riwayat & Status</button>
                 </div>
 
-                <div id="missionsGrid" class="missions-grid-container">
+                <div id="missionsGrid" class="stats-grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
                     <div class="text-center" style="grid-column: 1/-1; padding: 4rem;">Memuat peluang menarik...</div>
                 </div>
             </div>
@@ -35,23 +35,6 @@ class MahasiswaController {
 
     static async loadMissions(filterType = 'all') {
         const grid = document.getElementById('missionsGrid');
-
-        // Loading Skeleton
-        grid.innerHTML = Array(4).fill(0).map(() => `
-            <div class="mission-card">
-                <div style="padding: 1.5rem;">
-                    <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
-                        <div class="skeleton-circle" style="width: 50px; height: 50px;"></div>
-                        <div style="flex: 1;">
-                            <div class="skeleton" style="height: 1.2rem; width: 80%; margin-bottom: 0.5rem;"></div>
-                            <div class="skeleton" style="height: 0.8rem; width: 40%;"></div>
-                        </div>
-                    </div>
-                    <div class="skeleton" style="height: 3rem; width: 100%; border-radius: 12px;"></div>
-                </div>
-            </div>
-        `).join('');
-
         try {
             const [resMissions, resSubs] = await Promise.all([
                 API.getMissions(),
@@ -61,21 +44,33 @@ class MahasiswaController {
             const missions = resMissions.data.missions || [];
             const submissions = resSubs.data.submissions || [];
 
+            // Map submissions by mission_id for easy lookup
             const subMap = {};
             submissions.forEach(s => {
+                // If multiple submissions, take the latest one or the one that is approved
                 if (!subMap[s.mission_id] || subMap[s.mission_id].status !== 'approved') {
                     subMap[s.mission_id] = s;
                 }
             });
 
+            grid.innerHTML = '';
+
             let filtered = [];
 
             if (filterType === 'history') {
+                // Show all things user has submitted
                 filtered = missions.filter(m => subMap[m.id]);
             } else {
+                // Show available missions logic
                 filtered = missions.filter(m => {
                     const sub = subMap[m.id];
+
+                    // If approved, hide from available list (it's in history)
                     if (sub && sub.status === 'approved') return false;
+
+                    // If pending, show it but mark as 'Pending'
+                    // If rejected, show it and mark as 'Retry'
+
                     if (filterType === 'all') return true;
                     if (filterType === 'quiz') return m.type === 'quiz';
                     return m.type !== 'quiz';
@@ -84,13 +79,10 @@ class MahasiswaController {
 
             if (filtered.length === 0) {
                 grid.innerHTML = `
-                    <div style="grid-column: 1/-1; padding: 2rem 0;">
-                        <div class="empty-state">
-                            <div class="empty-state-icon">${filterType === 'history' ? '📜' : '🌪️'}</div>
-                            <h3 class="empty-state-title">${filterType === 'history' ? 'Belum Ada Riwayat' : 'Pusat Misi Kosong'}</h3>
-                            <p class="empty-state-desc">${filterType === 'history' ? 'Anda belum menyelesaikan misi apapun. Ayo mulai petualangan pertama Anda!' : 'Saat ini tidak ada misi yang tersedia untuk kategori ini. Cek lagi nanti ya!'}</p>
-                            ${filterType === 'history' ? `<button class="btn btn-primary" onclick="MahasiswaController.filterMissions('all', this.closest('.fade-in').querySelector('.tab-btn'))">Cari Misi 🚀</button>` : ''}
-                        </div>
+                    <div style="grid-column: 1/-1; text-align: center; padding: 4rem;">
+                        <div style="font-size: 4rem; opacity: 0.2; margin-bottom: 1rem;">${filterType === 'history' ? '📜' : '🌪️'}</div>
+                        <h3 style="color: var(--text-muted);">${filterType === 'history' ? 'Belum ada riwayat' : 'Belum ada misi tersedia'}</h3>
+                        <p style="opacity: 0.6;">${filterType === 'history' ? 'Kerjakan misi untuk melihat riwayat Anda' : 'Cek lagi nanti untuk misi baru!'}</p>
                     </div>
                 `;
                 return;
@@ -107,48 +99,69 @@ class MahasiswaController {
 
                 if (isPending) {
                     statusBadge = '<span class="badge badge-warning">Sedang Ditinjau</span>';
-                    actionBtn = `<button class="btn" disabled style="width:100%; border-radius:12px; background:#f1f5f9; color:var(--text-muted); padding: 0.8rem;">Menunggu Review ⏳</button>`;
+                    actionBtn = `<button class="btn" disabled style="width:100%; padding:1rem; border-radius:0; background:#f1f5f9; color:var(--text-muted);">Menunggu Review ⏳</button>`;
                 } else if (isRejected) {
                     statusBadge = '<span class="badge badge-error">Perlu Perbaikan</span>';
                     actionBtn = `
-                        <button class="btn btn-primary" style="width: 100%; border-radius: 12px; background: var(--error); border: none; padding: 0.8rem;" 
+                        <button class="btn btn-primary" style="border-radius: 0; width: 100%; padding: 1rem; background: var(--error); border: none;" 
                                 onclick="${m.type === 'quiz' ? `MahasiswaController.takeQuiz(${m.id})` : `MahasiswaController.showSubmitModal(${m.id})`}">
                             Perbaiki & Kirim Ulang 🔄
                         </button>`;
                 } else if (isApproved) {
                     statusBadge = '<span class="badge badge-success">Selesai ✅</span>';
-                    actionBtn = `<button class="btn" disabled style="width:100%; border-radius:12px; background:rgba(16, 185, 129, 0.1); color:var(--success); font-weight:700; padding: 0.8rem;">Lulus! +${sub.score || m.points} Pts</button>`;
+                    actionBtn = `<button class="btn" disabled style="width:100%; padding:1rem; border-radius:0; background:#f1f5f9; color:var(--success); font-weight:700;">Lulus! +${sub.score || m.points} Pts</button>`;
                 } else {
                     actionBtn = `
-                        <button class="btn btn-primary" style="width: 100%; border-radius: 12px; background: ${m.type === 'quiz' ? 'linear-gradient(to right, #6366f1, #a855f7)' : 'var(--primary)'}; border: none; padding: 0.8rem;" 
+                        <button class="btn btn-primary" style="border-radius: 0; width: 100%; padding: 1rem; background: ${m.type === 'quiz' ? 'linear-gradient(to right, #6366f1, #a855f7)' : 'var(--primary)'}; border: none;" 
                                 onclick="${m.type === 'quiz' ? `MahasiswaController.takeQuiz(${m.id})` : `MahasiswaController.showSubmitModal(${m.id})`}">
                             ${m.type === 'quiz' ? 'Ikuti Kuis Sekarang 🚀' : 'Mulai Misi ✨'}
                         </button>`;
                 }
 
                 return `
-                <div class="mission-card fade-in-item ${m.type === 'quiz' ? 'quiz-type' : 'task-type'}">
+                <div class="card fade-in-item" style="display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; border: 1px solid var(--border); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: default; position: relative;">
                     ${m.type === 'quiz' ? '<div style="position: absolute; top: 12px; right: 12px; background: rgba(99, 102, 241, 0.1); color: var(--primary); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; border: 1px solid rgba(99, 102, 241, 0.2);">KUIS CEPAT</div>' : ''}
                     
                     <div style="padding: 1.5rem;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 1rem; border-top: 1px solid #f8fafc;">
+                        <div style="display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1.5rem;">
+                            <div style="width: 50px; height: 50px; border-radius: 12px; background: ${m.type === 'quiz' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)'}; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                                ${m.type === 'quiz' ? '💡' : (m.type === 'assignment' ? '📄' : '✅')}
+                            </div>
+                            <div style="flex:1">
+                                <h4 style="margin: 0; font-weight: 700; color: var(--text-main); font-size: 1.1rem;">${m.title}</h4>
+                                <small style="color: var(--text-muted);">${m.creator_name || 'Academic Lab'}</small>
+                            </div>
+                        </div>
+
+                        ${statusBadge ? `<div style="margin-bottom:1rem;">${statusBadge}</div>` : ''}
+
+                        <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.5rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                            ${m.description || 'Selesaikan misi ini untuk mendapatkan pengakuan dan poin.'}
+                        </p>
+                        
+                        ${isRejected && sub.review_note ? `
+                            <div style="background:rgba(239, 68, 68, 0.05); color:var(--error); padding:0.75rem; border-radius:8px; font-size:0.85rem; margin-bottom:1rem; border:1px solid rgba(239, 68, 68, 0.2);">
+                                <strong>Feedback Dosen:</strong><br>
+                                "${sub.review_note}"
+                            </div>
+                        ` : ''}
+
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 1rem; border-top: 1px solid #f1f5f9;">
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
                                 <span style="font-size: 1.1rem;">💎</span>
                                 <span style="font-weight: 800; color: var(--text-main); font-size: 1.1rem;">${m.points}</span>
                                 <span style="color: var(--text-muted); font-size: 0.8rem;">pts</span>
                             </div>
                             <div style="text-align: right;">
-                                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">TENGGAT</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">TENGGAT WAKTU</div>
                                 <div style="font-size: 0.8rem; font-weight: 700; color: ${m.deadline ? 'var(--text-main)' : 'var(--success)'};">
-                                    ${m.deadline ? new Date(m.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'BUKA'}
+                                    ${m.deadline ? new Date(m.deadline).toLocaleDateString() : 'BUKA'}
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div style="padding: 0 1.5rem 1.5rem 1.5rem;">
-                        ${actionBtn}
-                    </div>
+                    ${actionBtn}
                 </div>
             `;
             }).join('');
@@ -389,21 +402,21 @@ class MahasiswaController {
                     </div>
                 </div>
 
-                <div class="tabs" style="margin-bottom: 2rem; display:flex; gap: 0.5rem; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; padding-bottom: 0.5rem;">
+                <div class="tabs" style="margin-bottom: 2rem; display:flex; gap: 1rem; border-bottom: 2px solid var(--border);">
                     <button class="tab-btn ${view === 'catalog' ? 'active' : ''}" 
                             onclick="MahasiswaController.renderShop('catalog')"
-                            style="padding: 0.6rem 1.25rem; background: ${view === 'catalog' ? 'var(--primary)' : 'rgba(0,0,0,0.05)'}; border:none; border-radius: 20px; font-weight: 700; color: ${view === 'catalog' ? 'white' : 'var(--text-muted)'}; cursor: pointer; display:flex; gap:0.5rem; align-items:center; transition: all 0.2s;">
+                            style="padding: 0.8rem 1.5rem; background:none; border:none; border-bottom: 3px solid ${view === 'catalog' ? 'var(--primary)' : 'transparent'}; font-weight: 600; color: ${view === 'catalog' ? 'var(--primary)' : 'var(--text-muted)'}; cursor: pointer; display:flex; gap:0.5rem; align-items:center;">
                         🛍️ Katalog
                     </button>
                     <button class="tab-btn ${view === 'my_items' ? 'active' : ''}" 
                             onclick="MahasiswaController.renderShop('my_items')"
-                            style="padding: 0.6rem 1.25rem; background: ${view === 'my_items' ? 'var(--primary)' : 'rgba(0,0,0,0.05)'}; border:none; border-radius: 20px; font-weight: 700; color: ${view === 'my_items' ? 'white' : 'var(--text-muted)'}; cursor: pointer; display:flex; gap:0.5rem; align-items:center; transition: all 0.2s;">
+                            style="padding: 0.8rem 1.5rem; background:none; border:none; border-bottom: 3px solid ${view === 'my_items' ? 'var(--primary)' : 'transparent'}; font-weight: 600; color: ${view === 'my_items' ? 'var(--primary)' : 'var(--text-muted)'}; cursor: pointer; display:flex; gap:0.5rem; align-items:center;">
                         🎒 Inventaris Saya
                     </button>
                 </div>
 
                 <div id="shopContent">
-                    <div id="shopGrid" class="products-grid-container">
+                    <div id="shopGrid" class="stats-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
                         <div class="text-center" style="grid-column: 1/-1; padding: 4rem;">Memuat Data Toko...</div>
                     </div>
                 </div>
@@ -431,22 +444,6 @@ class MahasiswaController {
 
     static async loadCatalog() {
         const grid = document.getElementById('shopGrid');
-
-        // Loading Skeleton
-        grid.innerHTML = Array(6).fill(0).map(() => `
-            <div class="product-card">
-                <div class="skeleton" style="height: 200px; width: 100%;"></div>
-                <div style="padding: 1.5rem;">
-                    <div class="skeleton" style="height: 1.2rem; width: 80%; margin-bottom: 0.5rem;"></div>
-                    <div class="skeleton" style="height: 0.8rem; width: 60%; margin-bottom: 1.5rem;"></div>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div class="skeleton" style="height: 1.5rem; width: 30%;"></div>
-                        <div class="skeleton" style="height: 2.5rem; width: 30%; border-radius: 20px;"></div>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-
         try {
             const user = JSON.parse(localStorage.getItem('user'));
             const [productsRes, txRes] = await Promise.all([
@@ -457,63 +454,49 @@ class MahasiswaController {
             let products = productsRes.data.products || [];
             const txns = txRes.data.transactions || [];
 
+            // Filter out purchased items by matching name in transaction description
+            // Backend format: "Purchase: [Product Name]"
             const boughtItems = new Set(
                 txns.filter(t => t.type === 'marketplace')
                     .map(t => t.description.replace('Purchase: ', '').trim())
             );
 
+            // Exclude bought items
             products = products.filter(p => !boughtItems.has(p.name));
 
             if (products.length === 0) {
-                grid.innerHTML = `
-                    <div style="grid-column: 1/-1; padding: 2rem 0;">
-                        <div class="empty-state">
-                            <div class="empty-state-icon">🛍️</div>
-                            <h3 class="empty-state-title">Katalog Kosong</h3>
-                            <p class="empty-state-desc">Toko saat ini kehabisan stok atau Anda telah memborong semua item yang tersedia! 🎉</p>
-                            <button class="btn btn-primary" onclick="handleNavigation('history', 'mahasiswa')">Lihat Inventaris Saya</button>
-                        </div>
-                    </div>
-                `;
+                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:4rem; color:var(--text-muted);">Toko saat ini kehabisan stok atau Anda telah memborong semuanya! 🎉</div>';
                 return;
             }
 
             grid.innerHTML = products.map(p => `
-                <div class="product-card fade-in-item">
-                    <div class="product-image-placeholder">
+                <div class="card product-card fade-in-item" style="padding: 0; overflow: hidden; border: 1px solid var(--border); transition: transform 0.3s;">
+                    <div style="height: 180px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 4rem; position: relative;">
                         ${p.category === 'vouchers' ? '🎟️' : (p.category === 'merchandise' ? '👕' : '🎁')}
-                        <div class="product-stock-badge" style="color: ${p.stock > 0 ? 'var(--success)' : 'var(--error)'};">
+                        <div style="position: absolute; bottom: 10px; right: 10px; background: white; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; box-shadow: var(--shadow-sm); color: ${p.stock > 0 ? 'var(--success)' : 'var(--error)'};">
                             STOCK: ${p.stock}
                         </div>
                     </div>
                     <div style="padding: 1.5rem;">
-                        <h4 style="margin:0; color: var(--text-main); font-weight: 700; font-size: 1.1rem;">${p.name}</h4>
-                        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0.5rem 0 1.5rem; line-height: 1.5; min-height: 2.6em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${p.description}</p>
+                        <h4 style="margin:0; color: var(--text-main); font-weight: 700;">${p.name}</h4>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0.5rem 0 1.2rem; line-height: 1.4; min-height: 2.4em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${p.description}</p>
                         
-                        <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #f8fafc; padding-top: 1rem;">
-                            <div style="display: flex; align-items: center; gap: 0.4rem;">
-                                <span style="font-size: 1.1rem;">💎</span>
-                                <span style="font-weight: 800; color: var(--primary); font-size: 1.25rem;">${p.price.toLocaleString()}</span>
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 0.3rem;">
+                                    <span style="font-size: 1.1rem;">💎</span>
+                                    <span style="font-weight: 800; color: var(--primary); font-size: 1.2rem;">${p.price.toLocaleString()}</span>
+                                </div>
+                                <button class="btn btn-primary" style="padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.85rem;" 
+                                        onclick="MahasiswaController.purchaseProduct(${p.id}, '${p.name}', ${p.price})" ${p.stock <= 0 ? 'disabled' : ''}>
+                                    ${p.stock <= 0 ? 'Habis' : 'Tukarkan'}
+                                </button>
                             </div>
-                            <button class="btn btn-primary" style="padding: 0.6rem 1.25rem; border-radius: 20px; font-size: 0.85rem; font-weight: 700;" 
-                                    onclick="MahasiswaController.purchaseProduct(${p.id}, '${p.name}', ${p.price})" ${p.stock <= 0 ? 'disabled' : ''}>
-                                ${p.stock <= 0 ? 'Habis' : 'Tukarkan'}
-                            </button>
                         </div>
                     </div>
                 </div>
             `).join('');
         } catch (e) {
-            grid.innerHTML = `
-                <div style="grid-column: 1/-1; padding: 2rem 0;">
-                    <div class="empty-state" style="border-color: var(--error);">
-                        <div class="empty-state-icon" style="background: rgba(239, 68, 68, 0.05);">❌</div>
-                        <h3 class="empty-state-title">Gagal Memuat</h3>
-                        <p class="empty-state-desc">Terjadi kesalahan saat mengambil data katalog. Silakan coba lagi nanti.</p>
-                        <button class="btn btn-secondary" onclick="MahasiswaController.loadCatalog()">Coba Lagi 🔄</button>
-                    </div>
-                </div>
-            `;
+            grid.innerHTML = '<div style="grid-column:1/-1;">Gagal memuat produk</div>';
         }
     }
 
@@ -660,9 +643,9 @@ class MahasiswaController {
                 </div>
 
                 <!-- Balance Display (Always Visible) -->
-                <div class="card card-gradient-1" style="padding: 2.5rem; border-radius: 24px; color: var(--text-main); margin-bottom: 2rem; text-align: center; box-shadow: var(--shadow-premium); border: 1px solid var(--border);">
-                        <div style="font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); font-weight: 700; margin-bottom: 0.5rem;">Saldo Tersedia</div>
-                        <div style="font-size: 3.5rem; font-weight: 900; color: var(--primary);" id="transferBalance">Loading...</div>
+                <div style="background: linear-gradient(135deg, #6366f1, #a855f7); padding: 2rem; border-radius: 20px; color: white; margin-bottom: 2rem; text-align: center; box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4);">
+                        <div style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.9; margin-bottom: 0.5rem;">Saldo Tersedia</div>
+                        <div style="font-size: 3rem; font-weight: 800;" id="transferBalance">Loading...</div>
                 </div>
 
                 <!-- VIEW 1: MENU (Buttons + History) -->
@@ -967,28 +950,24 @@ class MahasiswaController {
         const content = document.getElementById('mainContent');
         content.innerHTML = `
             <div class="fade-in">
-                <div class="page-header" style="text-align: center; margin-bottom: 2rem;">
+                <div style="text-align: center; margin-bottom: 2rem;">
                     <h2 style="font-weight: 800; color: var(--text-main);">📸 Pindai QR</h2>
                     <p style="color: var(--text-muted);">Arahkan kamera ke QR Wallet atau QR Produk</p>
                 </div>
 
-                <div class="card" style="max-width: 500px; margin: 0 auto; padding: 0; border-radius: 24px; position: relative; overflow: hidden; border: none; box-shadow: var(--shadow-lg); background: #000;">
-                    <div id="qr-reader" style="width: 100%; min-height: 350px;"></div>
-                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; border: 2px solid rgba(255, 255, 255, 0.1);">
-                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 250px; height: 250px; border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 20px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);"></div>
-                        <div style="position: absolute; bottom: 20px; width: 100%; text-align: center; color: white; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">Posisikan QR di dalam kotak</div>
-                    </div>
+                <div class="card" style="max-width: 500px; margin: 0 auto; padding: 1.5rem; border-radius: 24px; position: relative; overflow: hidden; border: 2px solid var(--primary-light);">
+                    <div id="qr-reader" style="width: 100%; border-radius: 16px; overflow: hidden; background: #000;"></div>
+                    <div id="qr-feedback" style="margin-top: 1rem; text-align: center; color: var(--text-muted); font-weight: 600;">Sedang mengaktifkan kamera...</div>
                 </div>
-                <div id="qr-feedback" style="text-align: center; color: var(--text-muted); font-weight: 600; margin-top: 1rem;">Sedang mengaktifkan kamera...</div>
 
-                <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-top: 2rem; padding: 0 1rem;">
-                    <label for="studentQrFileInput" class="btn" style="background: white; color: var(--primary); border: 2px dashed var(--primary); padding: 1rem 1.5rem; border-radius: 16px; font-weight: 700; cursor: pointer; width: 100%; max-width: 400px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.2s;">
-                        <span>📁</span> Scan dari Galeri / File
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-top: 2rem;">
+                    <label for="studentQrFileInput" class="btn" style="background: rgba(99, 102, 241, 0.05); color: var(--primary); border: 2px dashed var(--primary); padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 700; cursor: pointer; width: 100%; max-width: 400px; text-align: center;">
+                        📁 Scan dari Galeri / File
                     </label>
                     <input type="file" id="studentQrFileInput" accept="image/*" style="display: none;">
                     
-                    <button class="btn" onclick="MahasiswaController.showMyQR()" style="background: white; color: var(--text-main); border: 1px solid var(--border); padding: 1rem 1.5rem; border-radius: 16px; font-weight: 600; width: 100%; max-width: 400px; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: var(--shadow-sm);">
-                        <span>🆔</span> Tampilkan QR Saya
+                    <button class="btn btn-primary" onclick="MahasiswaController.showMyQR()" style="background: white; color: var(--primary); border: 2px solid var(--primary); padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 700; width: 100%; max-width: 400px;">
+                        Tampilkan QR Saya 🆔
                     </button>
                 </div>
             </div>
@@ -1217,32 +1196,24 @@ class MahasiswaController {
         const user = JSON.parse(localStorage.getItem('user'));
         const modalHtml = `
             <div class="modal-overlay" onclick="closeModal(event)">
-                <div class="modal-card fade-in" style="max-width: 400px; text-align: center; padding: 2.5rem; border-radius: 28px; box-shadow: var(--shadow-lg);">
-                    <div style="font-size: 3rem; margin-bottom: 0.5rem;">🆔</div>
-                    <h3 style="margin-bottom: 0.5rem; font-weight: 800; color: var(--text-main);">QR & ID Wallet</h3>
-                    <p style="color: var(--text-muted); margin-bottom: 2rem; font-size: 0.95rem;">Tunjukkan kode ini kepada rekan untuk menerima saldo poin.</p>
-                    
-                    <div id="my-qr-container" style="display: inline-block; padding: 1.5rem; background: white; border-radius: 24px; box-shadow: var(--shadow-sm); border: 2px solid var(--border); margin-bottom: 1.5rem;"></div>
-                    
-                    <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; background: #f8fafc; padding: 1rem; border-radius: 16px; border: 1px dashed var(--border);">
-                        <span style="font-size: 0.9rem; color: var(--text-muted);">NIM / ID User:</span>
-                        <code style="font-weight: 800; font-size: 1.1rem; color: var(--primary);">${user.nim_nip || user.id}</code>
-                    </div>
-
-                    <button class="btn btn-primary" onclick="closeModal()" style="width: 100%; margin-top: 2rem; padding: 1rem; border-radius: 16px; font-weight: 700;">
-                        Tutup Kartu ID
-                    </button>
+                <div class="modal-card" style="max-width: 400px; text-align: center; padding: 2.5rem;">
+                    <h3 style="margin-bottom: 0.5rem;">ID Wallet Saya</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 2rem;">Tunjukkan kode ini untuk menerima transfer</p>
+                    <div id="my-qr-container" style="display: flex; justify-content: center; margin-bottom: 2rem; background: white; padding: 1rem; border-radius: 16px; border: 1px solid var(--border);"></div>
+                    <div style="font-weight: 800; font-size: 1.2rem; color: var(--primary); background: #f1f5f9; padding: 0.5rem; border-radius: 8px;">${user.nim_nip || user.id}</div>
+                    <button class="btn btn-primary" onclick="closeModal()" style="width: 100%; margin-top: 2rem;">Tutup</button>
                 </div>
             </div>
         `;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
 
+        // Use QR Code Library or just QR text (Server-side generated preferred, but let's just make it simple)
         const qrContent = `WPUSER:${user.id}`;
         new QRCode(document.getElementById("my-qr-container"), {
             text: qrContent,
-            width: 200,
-            height: 200,
-            colorDark: "#1e293b",
+            width: 256,
+            height: 256,
+            colorDark: "#000000",
             colorLight: "#ffffff",
             correctLevel: QRCode.CorrectLevel.H
         });
@@ -1256,72 +1227,69 @@ class MahasiswaController {
     static showCheckoutForm(product) {
         const user = JSON.parse(localStorage.getItem('user'));
         const modalHtml = `
-        <div class="modal-overlay" id="checkoutModal" onclick="closeModal(event)">
-            <div class="modal-card fade-in" style="max-width: 550px; border-radius: 28px; padding: 2rem; box-shadow: var(--shadow-lg); overflow-y: auto;">
-                <div class="modal-head" style="margin-bottom: 1.5rem; text-align: left;">
-                    <h3 style="font-weight: 800; color: var(--text-main); margin: 0; font-size: 1.5rem;">📋 Detail Pembayaran</h3>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">Lengkapi data untuk memproses pesanan Anda.</p>
+            <div class="modal-overlay" id="checkoutModal">
+                <div class="modal-card" style="max-width: 500px; border-radius: 28px; padding: 2rem; box-shadow: var(--shadow-lg);">
+                    <div class="modal-head" style="margin-bottom: 1.5rem; text-align: left;">
+                        <h3 style="font-weight: 800; color: var(--text-main); margin: 0;">📋 Detail Pembayaran</h3>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">Lengkapi data untuk memproses pesanan Anda.</p>
+                    </div>
+                    
+                    <div style="background: var(--bg-main); padding: 1.25rem; border-radius: 20px; margin-bottom: 2rem; border: 1px dashed var(--border);">
+                        <div style="display:flex; justify-content:space-between; margin-bottom: 0.5rem;">
+                            <span style="color: var(--text-muted); font-size: 0.9rem;">Produk:</span>
+                            <span style="font-weight: 700; color: var(--text-main);">${product.name}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color: var(--text-muted); font-size: 0.9rem;">Total Harga:</span>
+                            <span style="font-weight: 900; color: var(--primary); font-size: 1.2rem;">💎 ${product.price.toLocaleString()} Pts</span>
+                        </div>
+                    </div>
+
+                    <form id="checkoutForm" onsubmit="MahasiswaController.handleFastCheckout(event, ${product.id}, '${product.name}', ${product.price}, ${product.created_by || 0})">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; text-align: left;">
+                            <div class="form-group">
+                                <label style="font-weight: 600; font-size: 0.85rem;">Nama Lengkap</label>
+                                <input type="text" name="student_name" value="${user.full_name || ''}" required style="padding: 0.75rem; border-radius: 12px;">
+                            </div>
+                            <div class="form-group">
+                                <label style="font-weight: 600; font-size: 0.85rem;">NPM / NIM</label>
+                                <input type="text" name="student_npm" value="${user.nim_nip || ''}" required style="padding: 0.75rem; border-radius: 12px;">
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 2rem; text-align: left;">
+                            <label style="font-weight: 700; margin-bottom: 1rem; display: block; font-size: 0.9rem;">Pilih Metode Pembayaran</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <label style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 1rem; border: 2px solid #e2e8f0; border-radius: 16px; cursor: pointer; transition: 0.3s;" class="pay-method-label">
+                                    <input type="radio" name="payment_method" value="wallet" checked style="display: none;">
+                                    <span style="font-size: 1.5rem;">🪙</span>
+                                    <span style="font-weight: 700; font-size: 0.85rem;">Saldo Wallet</span>
+                                </label>
+                                <label style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 1rem; border: 2px solid #e2e8f0; border-radius: 16px; cursor: pointer; transition: 0.3s;" class="pay-method-label">
+                                    <input type="radio" name="payment_method" value="qr" style="display: none;">
+                                    <span style="font-size: 1.5rem;">📸</span>
+                                    <span style="font-weight: 700; font-size: 0.85rem;">Kode QR</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem;">
+                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('checkoutModal').remove()" style="padding: 1rem; border-radius: 14px; font-weight: 600;">Batal</button>
+                            <button type="submit" class="btn btn-primary" id="fastPayBtn" style="padding: 1rem; border-radius: 14px; font-weight: 800; background: linear-gradient(135deg, #6366f1, #a855f7); border: none; box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);">
+                                Konfirmasi Pembayaran 🚀
+                            </button>
+                        </div>
+                    </form>
                 </div>
-                
-                <div style="background: #f8fafc; padding: 1.5rem; border-radius: 20px; margin-bottom: 2rem; border: 1px dashed var(--border);">
-                    <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom: 0.75rem;">
-                        <span style="color: var(--text-muted); font-size: 0.9rem;">Produk:</span>
-                        <span style="font-weight: 700; color: var(--text-main); text-align: right;">${product.name}</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items: center;">
-                        <span style="color: var(--text-muted); font-size: 0.9rem;">Total Harga:</span>
-                        <span style="font-weight: 900; color: var(--primary); font-size: 1.4rem;">💎 ${product.price.toLocaleString()} Pts</span>
-                    </div>
-                </div>
-
-                <form id="checkoutForm" onsubmit="MahasiswaController.handleFastCheckout(event, ${product.id}, '${product.name}', ${product.price}, ${product.created_by || 0})">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem; text-align: left;">
-                        <div class="form-group">
-                            <label style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 0.5rem; color: var(--text-main);">Nama Lengkap</label>
-                            <input type="text" name="student_name" value="${user.full_name || ''}" required style="padding: 0.85rem; border-radius: 14px; width: 100%; border: 1px solid var(--border); background: white; box-sizing: border-box;">
-                        </div>
-                        <div class="form-group">
-                            <label style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 0.5rem; color: var(--text-main);">NPM / NIM</label>
-                            <input type="text" name="student_npm" value="${user.nim_nip || ''}" required style="padding: 0.85rem; border-radius: 14px; width: 100%; border: 1px solid var(--border); background: white; box-sizing: border-box;">
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom: 2.5rem; text-align: left;">
-                        <label style="font-weight: 700; margin-bottom: 1rem; display: block; font-size: 0.95rem; color: var(--text-main);">Pilih Metode Pembayaran</label>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
-                            <label style="display: flex; flex-direction: column; align-items: center; gap: 0.75rem; padding: 1.25rem; border: 2px solid #e2e8f0; border-radius: 20px; cursor: pointer; transition: all 0.2s;" class="pay-method-label">
-                                <input type="radio" name="payment_method" value="wallet" checked style="display: none;">
-                                <span style="font-size: 2rem;">🪙</span>
-                                <span style="font-weight: 700; font-size: 0.9rem;">Saldo Wallet</span>
-                            </label>
-                            <label style="display: flex; flex-direction: column; align-items: center; gap: 0.75rem; padding: 1.25rem; border: 2px solid #e2e8f0; border-radius: 20px; cursor: pointer; transition: all 0.2s;" class="pay-method-label">
-                                <input type="radio" name="payment_method" value="qr" style="display: none;">
-                                <span style="font-size: 2rem;">📸</span>
-                                <span style="font-weight: 700; font-size: 0.9rem;">Kode QR</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div style="display: flex; flex-wrap: wrap-reverse; gap: 1rem;">
-                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('checkoutModal').remove()" style="flex: 1; padding: 1rem; border-radius: 16px; font-weight: 600; min-width: 120px;">Batal</button>
-                        <button type="submit" class="btn btn-primary" id="fastPayBtn" style="flex: 2; padding: 1rem; border-radius: 16px; font-weight: 800; background: linear-gradient(135deg, #6366f1, #a855f7); border: none; box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3); min-width: 200px;">
-                            Konfirmasi Pembayaran 🚀
-                        </button>
-                    </div>
-                </form>
             </div>
-        </div>
-        <style>
-            .pay-method-label:has(input:checked) {
-                border-color: var(--primary) !important;
-                background: rgba(99, 102, 241, 0.05);
-                transform: scale(1.02);
-            }
-            .pay-method-label:hover {
-                background: #f8fafc;
-            }
-        </style>
-    `;
+            <style>
+                .pay-method-label:has(input:checked) {
+                    border-color: var(--primary) !important;
+                    background: #eff6ff !important;
+                    color: var(--primary) !important;
+                }
+            </style>
+        `;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     }
 

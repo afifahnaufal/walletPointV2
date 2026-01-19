@@ -27,18 +27,19 @@ class DosenController {
         const content = document.getElementById('mainContent');
         content.innerHTML = `
             <div class="fade-in">
-                <div class="table-wrapper" style="border-top: 6px solid var(--primary);">
-                    <div class="table-header" style="background: #f8fafc; padding: 1.5rem 2rem; border-bottom: 1px solid var(--border);">
-                        <div>
-                            <h2 style="font-weight: 800; color: var(--text-main); font-size: 1.25rem; margin: 0;">📝 Manajemen Kuis</h2>
-                            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">Buat dan kelola kuis interaktif untuk siswa</p>
-                        </div>
-                        <button class="btn btn-primary" onclick="DosenController.showQuizModal()" style="border-radius: 20px; padding: 0.6rem 1.25rem; font-size: 0.85rem;">
-                            <span>+</span> Buat Kuis Baru
-                        </button>
+                <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <div>
+                        <h2 style="font-weight: 700; color: var(--text-main);">Manajemen Kuis</h2>
+                        <p style="color: var(--text-muted);">Buat dan kelola kuis interaktif untuk siswa</p>
                     </div>
+                    <button class="btn btn-primary" onclick="DosenController.showQuizModal()">
+                        <span style="font-size: 1.2rem;">+</span> Buat Kuis Baru
+                    </button>
+                </div>
+
+                <div class="table-wrapper">
                     <div style="overflow-x: auto;">
-                        <table class="premium-table mobile-cards" id="quizzesTable">
+                        <table class="premium-table" id="quizzesTable">
                             <thead>
                                 <tr>
                                     <th>Detail Kuis</th>
@@ -49,18 +50,7 @@ class DosenController {
                                     <th class="text-right">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                ${Array(3).fill(0).map(() => `
-                                    <tr>
-                                        <td><div class="skeleton" style="width: 200px; height: 12px;"></div></td>
-                                        <td><div class="skeleton" style="width: 80px; height: 20px; border-radius: 12px;"></div></td>
-                                        <td><div class="skeleton" style="width: 60px; height: 12px;"></div></td>
-                                        <td><div class="skeleton" style="width: 70px; height: 12px;"></div></td>
-                                        <td><div class="skeleton" style="width: 50px; height: 20px; border-radius: 12px;"></div></td>
-                                        <td><div class="skeleton" style="width: 40px; height: 12px; float: right;"></div></td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
+                            <tbody><tr><td colspan="6" class="text-center">Memuat Kuis...</td></tr></tbody>
                         </table>
                     </div>
                 </div>
@@ -76,12 +66,9 @@ class DosenController {
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="6" class="text-center" style="padding: 4rem 1rem;">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">📝</div>
-                                <h3 class="empty-state-title">Manajemen Kuis Kosong</h3>
-                                <p class="empty-state-desc">Mulai dengan membuat kuis interaktif pertama Anda untuk menantang mahasiswa.</p>
-                                <button class="btn btn-primary" onclick="DosenController.showQuizModal()">+ Buat Kuis Perdana</button>
-                            </div>
+                            <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;">📝</div>
+                            <h3 style="color: var(--text-muted);">Tidak ada kuis ditemukan</h3>
+                            <p style="opacity: 0.6;">Mulai dengan membuat kuis interaktif pertama Anda.</p>
                         </td>
                     </tr>
                 `;
@@ -90,12 +77,12 @@ class DosenController {
 
             tbody.innerHTML = quizzes.map(q => `
                 <tr class="fade-in-item">
-                    <td data-label="Detail Kuis">
+                    <td>
                         <div style="display: flex; align-items: center; gap: 1rem;">
                             <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(99, 102, 241, 0.1); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
                                 💡
                             </div>
-                            <div style="text-align: left;">
+                            <div>
                                 <strong style="font-size: 1rem; color: var(--text-main);">${q.title}</strong><br>
                                 <small style="color: var(--text-muted); display: block; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                     ${q.description || 'Tidak ada instruksi yang diberikan'}
@@ -103,30 +90,30 @@ class DosenController {
                             </div>
                         </div>
                     </td>
-                    <td data-label="Kompleksitas">
+                    <td>
                         <span class="badge" style="background: rgba(99, 102, 241, 0.1); color: var(--primary); border: 1px solid rgba(99, 102, 241, 0.2);">
                             ${q.questions?.length || 0} Pertanyaan
                         </span>
                     </td>
-                    <td data-label="Hadiah">
-                        <div style="display: flex; align-items: center; gap: 0.4rem; justify-content: flex-end;">
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.4rem;">
                             <span style="color: #fbbf24; font-size: 1.1rem;">💎</span>
                             <span style="font-weight: 700; color: var(--text-main);">${q.points.toLocaleString()}</span>
                             <small style="color: var(--text-muted);">pts</small>
                         </div>
                     </td>
-                    <td data-label="Jadwal">
+                    <td>
                         <div style="font-size: 0.85rem;">
                             <div style="color: var(--text-main);">${q.deadline ? new Date(q.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : 'Tidak Ada Batas'}</div>
                             <small style="color: var(--text-muted);">${q.deadline ? new Date(q.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</small>
                         </div>
                     </td>
-                    <td data-label="Status">
+                    <td>
                         <span class="badge ${q.status === 'active' ? 'badge-success' : 'badge-warning'}">
                             ${q.status.charAt(0).toUpperCase() + q.status.slice(1)}
                         </span>
                     </td>
-                    <td class="text-right" data-label="Aksi">
+                    <td class="text-right">
                         <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
                             <button class="btn btn-sm" style="background: var(--primary); color: white; border-radius: 12px; font-size: 0.75rem; padding: 0.4rem 0.8rem;" 
                                     onclick="DosenController.renderSubmissions('pending', ${q.id})" title="Lihat Pengiriman">
@@ -160,12 +147,12 @@ class DosenController {
         const modalHtml = `
             <div class="modal-overlay" onclick="closeModal(event)">
                 <div class="modal-card" style="max-width: 1000px; width: 95%; height: 90vh; display: flex; flex-direction: column;">
-                    <div class="modal-head" style="background: white; color: var(--text-main); padding: 1.5rem 2rem; border-bottom: 1px solid var(--border);">
+                    <div class="modal-head" style="background: linear-gradient(to right, #6366f1, #a855f7); color: white; padding: 1.5rem 2rem;">
                         <div>
-                            <h3 style="margin:0; font-weight: 800; font-size: 1.5rem;">${id ? '📝 Edit Penilaian' : '✨ Desain Kuis Baru'}</h3>
-                            <p style="margin: 0.2rem 0 0 0; font-size: 0.9rem; color: var(--text-muted);">Konfigurasikan pertanyaan dan hadiah untuk siswa Anda</p>
+                            <h3 style="margin:0; font-weight: 700;">${id ? '📝 Edit Penilaian' : '✨ Desain Kuis Baru'}</h3>
+                            <p style="margin: 0.2rem 0 0 0; font-size: 0.85rem; opacity: 0.9;">Konfigurasikan pertanyaan dan hadiah untuk siswa Anda</p>
                         </div>
-                        <button class="btn-icon" onclick="closeModal()" style="color: var(--text-main); font-size: 1.5rem; border: none; background: #f1f5f9;">×</button>
+                        <button class="btn-icon" onclick="closeModal()" style="color: white; font-size: 1.5rem;">×</button>
                     </div>
                     
                     <div class="modal-body" style="flex: 1; overflow-y: auto; padding: 2rem; background: #fdfcfd;">
@@ -393,18 +380,19 @@ class DosenController {
         const content = document.getElementById('mainContent');
         content.innerHTML = `
             <div class="fade-in">
-                <div class="table-wrapper" style="border-top: 6px solid var(--success);">
-                    <div class="table-header" style="background: #f8fafc; padding: 1.5rem 2rem; border-bottom: 1px solid var(--border);">
-                        <div>
-                            <h2 style="font-weight: 800; color: var(--text-main); font-size: 1.25rem; margin:0;">🛠️ Lokakarya Misi</h2>
-                            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">Koordinasikan tugas dan penugasan untuk pengembangan siswa</p>
-                        </div>
-                        <button class="btn btn-primary" onclick="DosenController.showMissionModal()" style="border-radius: 20px; padding: 0.6rem 1.25rem; font-size: 0.85rem; background: var(--success); border: none;">
-                            <span>+</span> Tugas Baru
-                        </button>
+                <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <div>
+                        <h2 style="font-weight: 700; color: var(--text-main);">Lokakarya Misi</h2>
+                        <p style="color: var(--text-muted);">Koordinasikan tugas dan penugasan untuk pengembangan siswa</p>
                     </div>
+                    <button class="btn btn-primary" onclick="DosenController.showMissionModal()">
+                        <span style="font-size: 1.2rem;">+</span> Tugas Baru
+                    </button>
+                </div>
+
+                <div class="table-wrapper">
                     <div style="overflow-x: auto;">
-                        <table class="premium-table mobile-cards" id="missionsTable">
+                        <table class="premium-table" id="missionsTable">
                             <thead>
                                 <tr>
                                     <th>Pengenal Tugas</th>
@@ -415,18 +403,7 @@ class DosenController {
                                     <th class="text-right">Kelola</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                ${Array(3).fill(0).map(() => `
-                                    <tr>
-                                        <td><div class="skeleton" style="width: 200px; height: 12px;"></div></td>
-                                        <td><div class="skeleton" style="width: 80px; height: 20px; border-radius: 12px;"></div></td>
-                                        <td><div class="skeleton" style="width: 60px; height: 12px;"></div></td>
-                                        <td><div class="skeleton" style="width: 70px; height: 12px;"></div></td>
-                                        <td><div class="skeleton" style="width: 50px; height: 20px; border-radius: 12px;"></div></td>
-                                        <td><div class="skeleton" style="width: 40px; height: 12px; float: right;"></div></td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
+                            <tbody><tr><td colspan="6" class="text-center">Menyelaraskan misi...</td></tr></tbody>
                         </table>
                     </div>
                 </div>
@@ -442,12 +419,9 @@ class DosenController {
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="6" class="text-center" style="padding: 4rem 1rem;">
-                            <div class="empty-state">
-                                <div class="empty-state-icon">🛠️</div>
-                                <h3 class="empty-state-title">Laboratorium Misi Kosong</h3>
-                                <p class="empty-state-desc">Anda belum merilis tugas apapun. Desain misi baru untuk memandu perkembangan mahasiswa.</p>
-                                <button class="btn btn-primary" onclick="DosenController.showMissionModal()" style="background: var(--success); border: none;">+ Rilis Misi Baru</button>
-                            </div>
+                            <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;">🛠️</div>
+                            <h3 style="color: var(--text-muted);">Tidak ada misi aktif</h3>
+                            <p style="opacity: 0.6;">Laboratorium misi Anda saat ini kosong.</p>
                         </td>
                     </tr>
                 `;
@@ -456,12 +430,12 @@ class DosenController {
 
             tbody.innerHTML = missions.map(m => `
                 <tr class="fade-in-item">
-                    <td data-label="Tugas">
+                    <td>
                         <div style="display: flex; align-items: center; gap: 1rem;">
                             <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(16, 185, 129, 0.1); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
                                 ${m.type === 'assignment' ? '📄' : '✅'}
                             </div>
-                            <div style="text-align: left;">
+                            <div>
                                 <strong style="font-size: 1rem; color: var(--text-main);">${m.title}</strong><br>
                                 <small style="color: var(--text-muted); display: block; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                     ${m.description || 'Tidak ada detail instruksi'}
@@ -469,30 +443,30 @@ class DosenController {
                             </div>
                         </div>
                     </td>
-                    <td data-label="Kategori">
+                    <td>
                         <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--success); text-transform: capitalize; border: 1px solid rgba(16, 185, 129, 0.2);">
                             ${m.type}
                         </span>
                     </td>
-                    <td data-label="Hadiah">
-                        <div style="display: flex; align-items: center; gap: 0.4rem; justify-content: flex-end;">
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.4rem;">
                             <span style="color: #fbbf24; font-size: 1.1rem;">💎</span>
                             <span style="font-weight: 700; color: var(--text-main);">${m.points.toLocaleString()}</span>
                             <small style="color: var(--text-muted);">pts</small>
                         </div>
                     </td>
-                    <td data-label="Linimasa">
+                    <td>
                         <div style="font-size: 0.85rem;">
                             <div style="color: var(--text-main);">${m.deadline ? new Date(m.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : 'Buka Selamanya'}</div>
                             <small style="color: var(--text-muted);">${m.deadline ? new Date(m.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Tidak Ada Kadaluwarsa'}</small>
                         </div>
                     </td>
-                    <td data-label="Status">
+                    <td>
                         <span class="badge ${m.status === 'active' ? 'badge-success' : 'badge-warning'}" style="border-radius: 20px;">
                             ${m.status.charAt(0).toUpperCase() + m.status.slice(1)}
                         </span>
                     </td>
-                    <td class="text-right" data-label="Kelola">
+                    <td class="text-right">
                         <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
                             <button class="btn btn-sm" style="background: var(--primary); color: white; border-radius: 12px; font-size: 0.75rem; padding: 0.4rem 0.8rem;" 
                                     onclick="DosenController.renderSubmissions('pending', ${m.id})" title="Lihat Pengiriman">
@@ -526,12 +500,12 @@ class DosenController {
         const modalHtml = `
             <div class="modal-overlay" onclick="closeModal(event)">
                 <div class="modal-card" style="max-width: 650px; width: 95%; overflow: hidden; border-radius: var(--radius-xl);">
-                    <div class="modal-head" style="background: white; color: var(--text-main); padding: 1.5rem 2rem; border-bottom: 1px solid var(--border);">
+                    <div class="modal-head" style="background: var(--primary); color: white; padding: 1.5rem 2rem;">
                         <div>
-                            <h3 style="margin:0; font-weight: 800; font-size: 1.5rem;">${id ? '🛠️ Sempurnakan Misi' : '✨ Arsiteki Misi Baru'}</h3>
-                            <p style="margin: 0.2rem 0 0 0; font-size: 0.9rem; color: var(--text-muted);">Desain tugas untuk menantang siswa Anda</p>
+                            <h3 style="margin:0; font-weight: 700;">${id ? '🛠️ Sempurnakan Misi' : '✨ Arsiteki Misi Baru'}</h3>
+                            <p style="margin: 0.2rem 0 0 0; font-size: 0.85rem; opacity: 0.9;">Desain tugas untuk menantang siswa Anda</p>
                         </div>
-                        <button class="btn-icon" onclick="closeModal()" style="color: var(--text-main); font-size: 1.5rem; border: none; background: #f1f5f9;">×</button>
+                        <button class="btn-icon" onclick="closeModal()" style="color: white; font-size: 1.5rem;">×</button>
                     </div>
 
                     <div class="modal-body" style="padding: 2rem;">
@@ -657,7 +631,7 @@ class DosenController {
 
                 <div class="table-wrapper">
                     <div style="overflow-x: auto;">
-                        <table class="premium-table mobile-cards" id="submissionsTable">
+                        <table class="premium-table" id="submissionsTable">
                             <thead>
                                 <tr>
                                     <th>Info Kandidat</th>
@@ -713,36 +687,34 @@ class DosenController {
 
             tbody.innerHTML = submissions.map(s => `
                 <tr class="fade-in-item">
-                    <td data-label="Info Kandidat">
+                    <td>
                         <div style="display: flex; align-items: center; gap: 1rem;">
                             <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #a855f7); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem;">
                                 ${s.student_name ? s.student_name.charAt(0) : 'S'}
                             </div>
-                            <div style="text-align: left;">
+                            <div>
                                 <strong style="color: var(--text-main);">${s.student_name}</strong><br>
                                 <small style="color: var(--text-muted);">${s.student_nim}</small>
                             </div>
                         </div>
                     </td>
-                    <td data-label="Asal Misi">
-                        <div style="font-weight: 600; color: var(--primary); text-align: right;">${s.mission_title}</div>
+                    <td>
+                        <div style="font-weight: 600; color: var(--primary);">${s.mission_title}</div>
                     </td>
-                    <td data-label="Waktu">
+                    <td>
                         <div style="font-size: 0.85rem;">
                             <div style="color: var(--text-main);">${new Date(s.created_at).toLocaleDateString()}</div>
                             <small style="color: var(--text-muted);">${new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>
                         </div>
                     </td>
-                    <td data-label="Status & Skor">
-                        <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end;">
-                            <span class="badge ${s.status === 'pending' ? 'badge-warning' : (s.status === 'approved' ? 'badge-success' : 'badge-error')}" 
-                                  style="text-transform: capitalize;">
-                                ${s.status}
-                            </span>
-                            ${s.status !== 'pending' ? `<span style="font-weight: 700; color: var(--text-main);">${s.score}/100</span>` : ''}
-                        </div>
+                    <td>
+                        <span class="badge ${s.status === 'pending' ? 'badge-warning' : (s.status === 'approved' ? 'badge-success' : 'badge-error')}" 
+                              style="text-transform: capitalize;">
+                            ${s.status}
+                        </span>
+                        ${s.status !== 'pending' ? `<span style="font-weight: 700; margin-left: 0.5rem; color: var(--text-main);">${s.score}/100</span>` : ''}
                     </td>
-                    <td class="text-right" data-label="Aksi">
+                            <td class="text-right">
                         ${s.status === 'pending'
                     ? `<button class="btn btn-primary" onclick="DosenController.showReviewModal(${s.id})" style="padding: 0.4rem 1.2rem; font-size: 0.85rem; border-radius: 20px;">Tinjau Sekarang</button>`
                     : `<button class="btn" onclick="DosenController.showReviewModal(${s.id})" style="padding: 0.4rem 1.2rem; font-size: 0.85rem; background: #f1f5f9; color: var(--text-muted);">Lihat Detail</button>`
@@ -928,7 +900,7 @@ class DosenController {
                 </div>
 
                 <div class="table-wrapper">
-                    <table class="premium-table mobile-cards" id="studentsTable">
+                    <table class="premium-table" id="studentsTable">
                         <thead>
                             <tr>
                                 <th>Mahasiswa</th>
@@ -956,22 +928,20 @@ class DosenController {
 
             tbody.innerHTML = students.map(s => `
                 <tr class="fade-in-item">
-                    <td data-label="Mahasiswa">
-                        <div style="text-align: left;">
-                            <div style="font-weight: 700; color: var(--text-main);">${s.full_name}</div>
-                            <small style="color: var(--text-muted);">${s.email}</small>
-                        </div>
+                    <td>
+                        <div style="font-weight: 700; color: var(--text-main);">${s.full_name}</div>
+                        <small style="color: var(--text-muted);">${s.email}</small>
                     </td>
-                    <td data-label="NIM/NIP"><code>${s.nim_nip}</code></td>
-                    <td data-label="Saldo Point">
-                        <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 800; color: var(--primary); justify-content: flex-end;">
+                    <td><code>${s.nim_nip}</code></td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; font-weight: 800; color: var(--primary);">
                             💎 ${s.balance?.toLocaleString() || 0}
                         </div>
                     </td>
-                    <td data-label="Status">
+                    <td>
                         <span class="badge badge-success">${s.status}</span>
                     </td>
-                    <td class="text-right" data-label="Aksi">
+                    <td class="text-right">
                         <small style="color: var(--text-muted);">Monitoring Saja</small>
                     </td>
                 </tr>
