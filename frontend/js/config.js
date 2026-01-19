@@ -1,4 +1,4 @@
 const CONFIG = {
-    API_BASE_URL: 'http://localhost:8102/api/v1',
+    API_BASE_URL: 'https://walletpoint.xeroon.my.id/api/v1', // GANTI DENGAN URL DOMCLOUD ANDA
     DEBUG: true
 };
